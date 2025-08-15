@@ -1,110 +1,165 @@
 import pygame
-import os
-import sys
+import datetime
 
 pygame.init()
 
-# --- Window setup ---
-WIDTH, HEIGHT = 640, 480
+# --- Screen setup ---
+WIDTH, HEIGHT = 800, 600
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("2 Frame Animation Example")
+pygame.display.set_caption("Birthday Game")
 
-# --- Clock and font ---
+# --- Clock ---
 clock = pygame.time.Clock()
-font = pygame.font.Font(None, 36)
+FPS = 60
 
-# --- Load images ---
-def load_image(name):
-    path = os.path.join("images", name)
-    return pygame.image.load(path).convert_alpha()
+# --- Colors ---
+WHITE = (255, 255, 255)
+BLACK = (0, 0, 0)
+BLUE = (50, 50, 255)
+GREEN = (0, 200, 0)
 
-frames = {
-    "up":    [load_image("up_1.png"), load_image("up_2.png")],
-    "down":  [load_image("down_1.png"), load_image("down_2.png")],
-    "left":  [load_image("left_1.png"), load_image("left_2.png")],
-    "right": [load_image("right_1.png"), load_image("right_2.png")]
-}
-
-# --- Player setup ---
-player_x, player_y = WIDTH // 2, HEIGHT // 2
+# --- Player settings ---
+player_size = (50, 60)
+player_x, player_y = 100, HEIGHT - player_size[1] - 50
 player_speed = 4
-direction = "down"
+player_vel_y = 0
+gravity = 0.5
+on_ground = False
+
+# Placeholder surfaces for animations
+player_img_right = [
+    pygame.image.load("right 1.png").convert_alpha(),
+    pygame.image.load("right 2.png").convert_alpha()
+]
+player_img_left = [
+    pygame.image.load("left 1.png").convert_alpha(),
+    pygame.image.load("left 2.png").convert_alpha()
+]
+
+facing_right = True
 frame_index = 0
 frame_counter = 0
-frame_delay = 10  # Switch every 10 ticks
+frame_delay = 10
 
-# --- Jump variables ---
-is_jumping = False
-jump_speed = 10
-gravity = 0.5
-jump_velocity = 0
+# --- Platforms / stairs ---
+platforms = [pygame.Rect(0, HEIGHT - 20, WIDTH, 20)]
+block_size = 40
 
-# --- Timer ---
-start_ticks = pygame.time.get_ticks()
+# --- Text switching ---
+text_toggle = False  # False = daddy, True = jace
+font = pygame.font.SysFont(None, 40)
+
+# --- Bar countdown ---
+def time_until_next_aug13():
+    now = datetime.datetime.now()
+    target_year = now.year
+    target_date = datetime.datetime(target_year, 8, 13)
+    if now >= target_date:
+        target_year += 1
+        target_date = datetime.datetime(target_year, 8, 13)
+    return target_date - now
+
+bar_width = WIDTH - 100
+bar_height = 20
+bar_x, bar_y = 50, 20
 
 # --- Main loop ---
 running = True
 while running:
-    dt = clock.tick(60)  # 60 FPS
+    clock.tick(FPS)
+    screen.fill(WHITE)
 
-    # --- Event handling ---
+    # --- Events ---
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            pygame.quit()
-            sys.exit()
+            running = False
 
-        if event.type == pygame.KEYDOWN:
-            if event.key == pygame.K_SPACE and not is_jumping:
-                is_jumping = True
-                jump_velocity = -jump_speed
-
-    # --- Key state ---
+    # --- Movement ---
     keys = pygame.key.get_pressed()
-    moving = False
-    if keys[pygame.K_UP]:
-        player_y -= player_speed
-        direction = "up"
-        moving = True
-    elif keys[pygame.K_DOWN]:
-        player_y += player_speed
-        direction = "down"
-        moving = True
-    elif keys[pygame.K_LEFT]:
-        player_x -= player_speed
-        direction = "left"
-        moving = True
-    elif keys[pygame.K_RIGHT]:
-        player_x += player_speed
-        direction = "right"
-        moving = True
+    dx, dy = 0, 0
 
-    # --- Animation update ---
-    if moving:
+    if keys[pygame.K_LEFT]:
+        dx = -player_speed
+        facing_right = False
+    if keys[pygame.K_RIGHT]:
+        dx = player_speed
+        facing_right = True
+    if keys[pygame.K_UP] and on_ground:
+        player_vel_y = -10
+
+    # Gravity
+    player_vel_y += gravity
+    dy += player_vel_y
+
+    # --- Collision with platforms ---
+    on_ground = False
+    new_x = player_x + dx
+    new_y = player_y + dy
+    player_rect = pygame.Rect(new_x, new_y, *player_size)
+
+    for plat in platforms:
+        if player_rect.colliderect(plat):
+            # Moving down
+            if dy > 0:
+                player_rect.bottom = plat.top
+                player_vel_y = 0
+                on_ground = True
+            elif dy < 0:
+                player_rect.top = plat.bottom
+                player_vel_y = 0
+
+    player_x, player_y = player_rect.x, player_rect.y
+
+    # --- Animation frame update ---
+    if dx != 0:
         frame_counter += 1
         if frame_counter >= frame_delay:
-            frame_counter = 0
             frame_index = (frame_index + 1) % 2
+            frame_counter = 0
     else:
         frame_index = 0
 
-    # --- Jump physics ---
-    if is_jumping:
-        player_y += jump_velocity
-        jump_velocity += gravity
-        if player_y >= HEIGHT // 2:
-            player_y = HEIGHT // 2
-            is_jumping = False
+    # --- Draw player ---
+    if facing_right:
+        img = player_img_right[frame_index]
+    else:
+        img = player_img_left[frame_index]
+    screen.blit(img, (player_x, player_y))
 
-    # --- Draw ---
-    screen.fill((50, 150, 200))
+    # --- Draw platforms ---
+    for plat in platforms:
+        pygame.draw.rect(screen, GREEN, plat)
 
-    # Draw player
-    screen.blit(frames[direction][frame_index], (player_x, player_y))
+    # --- Bar countdown ---
+    time_left = time_until_next_aug13()
+    total_seconds = time_left.total_seconds()
+    days_total = (datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year) 
+                  - datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year - 1)).total_seconds()
+    if datetime.datetime.now() >= datetime.datetime.now().replace(month=8, day=13):
+        days_total = (datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year + 1) 
+                      - datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year)).total_seconds()
 
-    # Draw timer
-    seconds = (pygame.time.get_ticks() - start_ticks) // 1000
-    timer_surface = font.render(f"Time: {seconds}s", True, (255, 255, 255))
-    screen.blit(timer_surface, (10, 10))
+    progress = 1 - (total_seconds / days_total)
+    pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2)
+    pygame.draw.rect(screen, BLUE, (bar_x, bar_y, bar_width * progress, bar_height))
+
+    # --- Text ---
+    birthday_text = "Happy 46th birthday jace" if text_toggle else "Happy 46th birthday daddy"
+    text_surface = font.render(birthday_text, True, BLACK)
+    text_rect = text_surface.get_rect(center=(WIDTH // 2, bar_y - 20))
+    screen.blit(text_surface, text_rect)
+
+    # --- Collision with text ---
+    if player_rect.colliderect(text_rect):
+        text_toggle = not text_toggle
+        # Add a new block as a stair
+        new_block_x = len(platforms) * block_size
+        new_block_y = HEIGHT - 20 - (len(platforms) * block_size // 2)
+        platforms.append(pygame.Rect(new_block_x, new_block_y, block_size, block_size))
 
     pygame.display.flip()
+
+pygame.quit()
+
+
 
