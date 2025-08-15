@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Pixel Move — GitHub Pages Ready</title>
+  <style>
+    :root {
+      --bg: #0f1220;
+      --fg: #e8e8f0;
+      --accent: #7cff8a;
+      --panel: #1b2038;
+      --border: #2a3156;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      margin: 0;
+      background: radial-gradient(1200px 800px at 50% -10%, #1b2140, var(--bg));
+      color: var(--fg);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial;
+      display: grid;
+      place-items: center;
+      gap: 14px;
+      padding: 16px;
+    }
+    .wrap {
+      display: grid;
+      gap: 12px;
+      place-items: center;
+    }
+    /* Pixel-perfect canvas: low logical res, big CSS size */
+    canvas {
+      image-rendering: pixelated;
+      image-rendering: crisp-edges;
+      background: #2b2f4b;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.04);
+      width: min(92vmin, 680px);
+      height: auto;
+      display: block;
+    }
+
+    .hud {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+    .btn {
+      appearance: none;
+      border: 1px solid var(--border);
+      background: linear-gradient(#262b4a, #1b2038);
+      color: var(--fg);
+      padding: 8px 12px;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,.25), inset 0 0 0 1px rgba(255,255,255,.04);
+      transition: transform .06s ease, filter .2s ease;
+    }
+    .btn:active { transform: translateY(1px); }
+
+    /* On-screen controls for phones */
+    .controls {
+      position: fixed;
+      inset: auto 0 12px 0;
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      align-items: end;
+      pointer-events: none; /* children re-enable */
+      padding: 0 12px;
+      gap: 12px;
+    }
+    .dpad, .ab {
+      pointer-events: auto;
+      display: grid;
+      gap: 8px;
+      touch-action: none;
+    }
+    .dpad {
+      grid-template-areas:
+        ".    up   ."
+        "left  mid  right"
+        ".    down .";
+      grid-template-columns: repeat(3, 64px);
+      grid-template-rows: repeat(3, 64px);
+      justify-content: start;
+    }
+    .ab {
+      grid-template-columns: repeat(2, 72px);
+      justify-content: end;
+      align-content: end;
+    }
+    .padbtn {
+      width: 64px; height: 64px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: linear-gradient(#2a3156, #20264a);
+      box-shadow: 0 6px 16px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.06);
+      display: grid; place-items: center;
+      font-weight: 800;
+      color: #cfe7ff;
+      user-select: none;
+    }
+    .padbtn:active { filter: brightness(1.1); }
+    .up    { grid-area: up; }
+    .down  { grid-area: down; }
+    .left  { grid-area: left; }
+    .right { grid-area: right; }
+
+    .legend { opacity: .8; font-size: 12px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <canvas id="game" width="320" height="180" aria-label="pixel game"></canvas>
+    <div class="hud">
+      <button class="btn" id="btnPause" title="Space">⏸️ Pause</button>
+      <button class="btn" id="btnFS" title="Toggle Fullscreen">⛶ Fullscreen</button>
+      <span class="legend">Move: Arrow Keys / WASD • Mobile: use on‑screen pad • Reset: R</span>
+    </div>
+  </div>
+
+  <!-- On-screen mobile controls -->
+  <div class="controls" id="controls">
+    <div class="dpad">
+      <div class="padbtn up"    data-key="ArrowUp">▲</div>
+      <div class="padbtn left"  data-key="ArrowLeft">◀</div>
+      <div class="padbtn right" data-key="ArrowRight">▶</div>
+      <div class="padbtn down"  data-key="ArrowDown">▼</div>
+    </div>
+    <div></div>
+    <div class="ab">
+      <div class="padbtn" data-key="Space" title="Dash">A</div>
+      <div class="padbtn" data-key="KeyR"  title="Reset">B</div>
+    </div>
+  </div>
+
+  <script>
+    // --- helpers
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+    // --- setup
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+
+    // Simple tile map (1 = wall, 0 = floor)
+    const MAP_W = 20, MAP_H = 12, TILE = 16;
+    const map = new Array(MAP_W * MAP_H).fill(0).map((_, i) => {
+      const x = i % MAP_W, y = (i / MAP_W) | 0;
+      // outer walls + a couple of blocks
+      if (x === 0 || y === 0 || x === MAP_W-1 || y === MAP_H-1) return 1;
+      if ((x === 7 && y > 2 && y < 10) || (y === 6 && x > 10 && x < 18)) return 1;
+      return 0;
+    });
+
+    const keys = new Map();
+
+    const player = {
+      x: 2.5 * TILE,
+      y: 2.5 * TILE,
+      w: 12,
+      h: 12,
+      speed: 90, // px/sec
+      dash: 210,
+      dashCD: 0,
+    };
+
+    let paused = false;
+    let last = performance.now();
+
+    // --- input (keyboard)
+    const setKey = (code, down) => { keys.set(code, down); };
+
+    window.addEventListener('keydown', (e) => {
+      const code = e.code || e.key;
+      if (["ArrowUp","ArrowDown","ArrowLeft","ArrowRight","Space"].includes(e.key)) e.preventDefault();
+      setKey(code, true);
+      if (code === 'Space') tryDash();
+      if (code === 'KeyR') reset();
+    }, { passive: false });
+
+    window.addEventListener('keyup', (e) => setKey(e.code || e.key, false));
+
+    // --- input (touch d-pad)
+    const controls = document.getElementById('controls');
+    const activeTouches = new Map();
+
+    const press = (code) => setKey(code, true);
+    const release = (code) => setKey(code, false);
+
+    function bindPad(el) {
+      const code = el.dataset.key;
+      const start = (ev) => {
+        ev.preventDefault();
+        press(code);
+        for (const t of ev.changedTouches || []) activeTouches.set(t.identifier, code);
+      };
+      const end = (ev) => {
+        ev.preventDefault();
+        for (const t of ev.changedTouches || []) {
+          const c = activeTouches.get(t.identifier);
+          if (c) { release(c); activeTouches.delete(t.identifier); }
+        }
+      };
+      el.addEventListener('touchstart', start, { passive: false });
+      el.addEventListener('touchend', end, { passive: false });
+      el.addEventListener('touchcancel', end, { passive: false });
+      el.addEventListener('mousedown', (e) => { e.preventDefault(); press(code); });
+      el.addEventListener('mouseup',   (e) => { e.preventDefault(); release(code); });
+      el.addEventListener('mouseleave',(e) => { e.preventDefault(); release(code); });
+    }
+
+    controls.querySelectorAll('[data-key]').forEach(bindPad);
+
+    // --- buttons
+    const btnPause = document.getElementById('btnPause');
+    const btnFS = document.getElementById('btnFS');
+
+    btnPause.addEventListener('click', () => {
+      paused = !paused; btnPause.textContent = paused ? '▶️ Resume' : '⏸️ Pause';
+    });
+
+    btnFS.addEventListener('click', async () => {
+      if (!document.fullscreenElement) {
+        await document.documentElement.requestFullscreen().catch(()=>{});
+      } else {
+        await document.exitFullscreen().catch(()=>{});
+      }
+    });
+
+    function reset() {
+      player.x = 2.5 * TILE; player.y = 2.5 * TILE; player.dashCD = 0;
+    }
+
+    function tryDash() {
+      if (player.dashCD > 0) return;
+      // dash toward current input
+      const dir = getInputDir();
+      if (dir.x === 0 && dir.y === 0) return;
+      player.x += dir.x * 24; // immediate hop
+      player.y += dir.y * 24;
+      player.dashCD = 0.6; // seconds cooldown
+    }
+
+    function tileAt(px, py) {
+      const tx = Math.floor(px / TILE), ty = Math.floor(py / TILE);
+      if (tx < 0 || ty < 0 || tx >= MAP_W || ty >= MAP_H) return 1; // treat out of bounds as wall
+      return map[ty * MAP_W + tx];
+    }
+
+    function collideAndMove(obj, dx, dy) {
+      // axis-aligned sweep with tiny bbox
+      let nx = obj.x + dx, ny = obj.y + dy;
+      // horizontal
+      if (dx !== 0) {
+        const step = Math.sign(dx);
+        for (let i = 0; i < Math.abs(dx); i++) {
+          const tryX = obj.x + step;
+          const left   = tryX - obj.w/2;
+          const right  = tryX + obj.w/2;
+          const top    = obj.y - obj.h/2;
+          const bottom = obj.y + obj.h/2;
+          if (tileAt(left, top) || tileAt(right, top) || tileAt(left, bottom) || tileAt(right, bottom)) break;
+          obj.x = tryX;
+        }
+      }
+      // vertical
+      if (dy !== 0) {
+        const step = Math.sign(dy);
+        for (let i = 0; i < Math.abs(dy); i++) {
+          const tryY = obj.y + step;
+          const left   = obj.x - obj.w/2;
+          const right  = obj.x + obj.w/2;
+          const top    = tryY - obj.h/2;
+          const bottom = tryY + obj.h/2;
+          if (tileAt(left, top) || tileAt(right, top) || tileAt(left, bottom) || tileAt(right, bottom)) break;
+          obj.y = tryY;
+        }
+      }
+    }
+
+    function getInputDir() {
+      let x = 0, y = 0;
+      if (keys.get('ArrowLeft') || keys.get('KeyA')) x -= 1;
+      if (keys.get('ArrowRight')|| keys.get('KeyD')) x += 1;
+      if (keys.get('ArrowUp')   || keys.get('KeyW')) y -= 1;
+      if (keys.get('ArrowDown') || keys.get('KeyS')) y += 1;
+      if (x !== 0 && y !== 0) { const inv = 1/Math.sqrt(2); x *= inv; y *= inv; }
+      return { x, y };
+    }
+
+    function drawMap() {
+      for (let y = 0; y < MAP_H; y++) {
+        for (let x = 0; x < MAP_W; x++) {
+          const v = map[y*MAP_W + x];
+          ctx.fillStyle = v ? '#1a8cff' : '#3a3f6b';
+          ctx.fillRect(x*TILE, y*TILE, TILE, TILE);
+          if (!v) {
+            // subtle floor dots for texture
+            ctx.fillStyle = '#2f3460';
+            ctx.fillRect(x*TILE+6, y*TILE+8, 1, 1);
+            ctx.fillRect(x*TILE+11, y*TILE+3, 1, 1);
+          }
+        }
+      }
+    }
+
+    function drawPlayer() {
+      // pixel-y body
+      const { x, y, w, h } = player;
+      const px = Math.round(x - w/2), py = Math.round(y - h/2);
+      ctx.fillStyle = '#7cff8a';
+      ctx.fillRect(px, py, w, h);
+      // face pixels
+      ctx.fillStyle = '#0f1220';
+      ctx.fillRect(px+3, py+4, 2, 2);
+      ctx.fillRect(px+7, py+4, 2, 2);
+      ctx.fillStyle = '#d2ffd8';
+      ctx.fillRect(px+3, py+8, 6, 2);
+    }
+
+    function step(dt) {
+      // cooldowns
+      player.dashCD = Math.max(0, player.dashCD - dt);
+
+      // movement (pixel steps for collision loop)
+      const dir = getInputDir();
+      const speed = (keys.get('Space') ? player.dash : player.speed);
+      const dx = Math.round(dir.x * speed * dt);
+      const dy = Math.round(dir.y * speed * dt);
+      collideAndMove(player, dx, dy);
+
+      // camera is static in this mini demo
+    }
+
+    function render() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      drawMap();
+      drawPlayer();
+
+      // UI text
+      ctx.fillStyle = 'rgba(0,0,0,.45)';
+      ctx.fillRect(6, 6, 92, 28);
+      ctx.fillStyle = '#cfe7ff';
+      ctx.font = '10px monospace';
+      ctx.fillText('Pixel Move', 12, 18);
+      ctx.fillText('Dash: Space/A', 12, 30);
+    }
+
+    function loop(t) {
+      const now = t || performance.now();
+      const dt = clamp((now - last) / 1000, 0, 0.05);
+      last = now;
+      if (!paused) step(dt);
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    // kick off
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
