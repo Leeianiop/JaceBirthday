@@ -2,59 +2,67 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Countdown & Player Example</title>
+<title>Birthday Countdown Game</title>
 <style>
   body { background: #f0f0f0; display: flex; flex-direction: column; align-items: center; }
   canvas { background: #fff; margin-top: 20px; border: 1px solid #000; }
+  h1 { cursor: pointer; }
 </style>
 </head>
 <body>
 
-<h1 id="countdown"></h1>
+<h1 id="birthdayText">Happy 46th birthday daddy</h1>
+<h2 id="countdown"></h2>
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+// --- Text click cycle ---
+const texts = ["Happy 46th birthday daddy","Jace","Lee"];
+let textIndex = 0;
+document.getElementById('birthdayText').addEventListener('click', () => {
+    textIndex = (textIndex + 1) % texts.length;
+    document.getElementById('birthdayText').innerText = texts[textIndex];
+});
+
 // --- Countdown setup ---
 function getNextCountdown() {
     const now = new Date();
-    let target = new Date(now.getFullYear(), 7, 13); // August
+    let target = new Date(now.getFullYear(), 7, 13); // Month 7 = August
     if (now > target) target.setFullYear(now.getFullYear() + 1);
     return target;
 }
 let targetDate = getNextCountdown();
 
 // --- Load images ---
-const playerImages = {
-    right: [new Image(), new Image()],
-    left: [new Image(), new Image()]
-};
-playerImages.right[0].src = "right 1.png";
-playerImages.right[1].src = "right 2.png";
-playerImages.left[0].src = "left 1.png";
-playerImages.left[1].src = "left 2.png";
+const playerRightFrames = [new Image(), new Image()];
+playerRightFrames[0].src = 'right 1.png';
+playerRightFrames[1].src = 'right 2.png';
+const playerLeftFrames = [new Image(), new Image()];
+playerLeftFrames[0].src = 'left 1.png';
+playerLeftFrames[1].src = 'left 2.png';
+let player = { x: 400, y: 300, width: 80, height: 100, dir: "right", frame: 0, jumping: false, jumpTime: 0 };
 
-const cakeImages = [new Image(), new Image()];
-cakeImages[0].src = "cake normal.png";
-cakeImages[1].src = "cake eaten.png";
-
-// --- Player setup ---
-let player = { x: 400, y: 300, width: 50, height: 60, dir: "right", frame: 0, jumping: false, jumpProgress: 0 };
-const playerSpeed = 5;
-const jumpHeight = 40;
-
-// --- Cake setup ---
-let cake = { x: 600, y: 300, width: 60, height: 60, frame: 0 };
+const cakeFrames = [new Image(), new Image()];
+cakeFrames[0].src = 'cake normal.png';
+cakeFrames[1].src = 'cake eaten.png';
+let cake = { x: 600, y: 300, width: 80, height: 80, frame: 0 };
 
 // --- Key handling ---
 const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-// --- Countdown update every second ---
-function updateCountdown() {
+// --- Game loop ---
+const playerSpeed = 5;
+const maxFlyTime = 30; // ~0.5 sec
+
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Countdown
     const now = new Date();
     let diff = targetDate - now;
     if (diff <= 0) targetDate = getNextCountdown();
@@ -64,47 +72,39 @@ function updateCountdown() {
     const minutes = Math.floor((diff / (1000*60)) % 60);
     const seconds = Math.floor((diff / 1000) % 60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-}
-setInterval(updateCountdown, 1000);
-updateCountdown();
 
-// --- Game loop ---
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    // Countdown bar
+    const barWidth = 600, barHeight = 20, barX = 100, barY = 80;
+    const totalTime = (targetDate - new Date())/1000;
+    const progress = 1 - totalTime / (targetDate - getNextCountdown())*1000;
+    ctx.fillStyle = "gray";
+    ctx.fillRect(barX, barY, barWidth, barHeight);
+    ctx.fillStyle = "green";
+    ctx.fillRect(barX, barY, barWidth * Math.max(0, progress), barHeight);
 
     // --- Player movement ---
-    if (keys['arrowleft']) {
-        player.x -= playerSpeed;
-        player.dir = "left";
-        player.frame = (player.frame + 1) % 2;
-    } else if (keys['arrowright']) {
-        player.x += playerSpeed;
-        player.dir = "right";
-        player.frame = (player.frame + 1) % 2;
-    } else {
-        player.frame = 0; // idle frame
-    }
+    if (keys['arrowleft']) { player.x -= playerSpeed; player.dir="left"; player.frame=(player.frame+1)%2; }
+    else if (keys['arrowright']) { player.x += playerSpeed; player.dir="right"; player.frame=(player.frame+1)%2; }
+    else { player.frame = 0; }
 
-    // Jump
-    if (keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpProgress = 0; }
+    // Jump / Fly
+    if (keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpTime=0; }
     if (player.jumping) {
-        player.y -= 5;
-        player.jumpProgress++;
-        if (player.jumpProgress >= jumpHeight/5) player.jumping = false;
-    } else if (player.y < 300) { player.y += 5; } // fall down
+        if (player.jumpTime < maxFlyTime) { player.y -= 5; player.jumpTime++; }
+        else player.jumping = false;
+    } else if (player.y < 300) { player.y += 5; }
 
     // --- Cake interaction ---
     cake.frame = keys['a'] ? 1 : 0;
 
     // --- Draw player ---
-    const pImg = playerImages[player.dir][player.frame];
-    ctx.drawImage(pImg, player.x, player.y, player.width, player.height);
+    let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
 
     // --- Draw cake ---
-    const cImg = cakeImages[cake.frame];
-    ctx.drawImage(cImg, cake.x, cake.y, cake.width, cake.height);
+    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
     ctx.fillStyle = "black";
-    ctx.font = "16px Arial";
+    ctx.font = "18px Arial";
     ctx.fillText("Press A to eat", cake.x + 5, cake.y - 10);
 
     requestAnimationFrame(gameLoop);
@@ -114,4 +114,3 @@ gameLoop();
 
 </body>
 </html>
-
