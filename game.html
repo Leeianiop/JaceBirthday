@@ -1,137 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Stair Builder</title>
+  <meta charset="utf-8" />
+  <title>Birthday Stair Builder (GitHub Pages)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
   <style>
-    body { margin: 0; overflow: hidden; background: #222; }
-    canvas { display: block; background: #87CEEB; }
-    #countdown {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      font-family: 'Trebuchet MS', sans-serif;
-      font-size: 24px;
-      color: #fff;
-      background: rgba(0,0,0,0.6);
-      padding: 8px 16px;
-      border-radius: 10px;
-      letter-spacing: 2px;
+    :root {
+      --bg: #dff3ff;
+      --ground: #8B4513;
+      --block: #6f3d12;
+      --text: #2b1b7a;
+      --bar-bg: #efefef;
+      --bar-fill: #2d9cdb;
     }
+    html,body { height:100%; margin:0; font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: var(--bg); }
+    #wrap { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
+    canvas { background: linear-gradient(#dff3ff,#bfefff); display:block; border-radius:8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
+    #hud { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); text-align:center; pointer-events:none; }
+    #title { font-weight:900; color:var(--text); letter-spacing:1px; text-shadow: 2px 2px 0 rgba(0,0,0,0.12); pointer-events:auto; }
+    #countdown { margin-top:6px; font-weight:700; background: rgba(255,255,255,0.85); padding:6px 14px; border-radius:12px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); pointer-events:none;}
+    #instructions { position: absolute; left:16px; bottom:16px; background:rgba(255,255,255,0.8); padding:8px 12px; border-radius:8px; font-size:14px; }
   </style>
 </head>
 <body>
-  <div id="countdown"></div>
-  <canvas id="game"></canvas>
-  <script>
-    const canvas = document.getElementById("game");
-    const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+  <div id="wrap">
+    <canvas id="game"></canvas>
+  </div>
 
-    // Player
-    const player = { x: 100, y: 100, w: 40, h: 40, color: "red", dx: 0, dy: 0, speed: 5, gravity: 0.5, jump: -10, grounded: false };
+  <div id="hud" aria-hidden="true">
+    <div id="title" style="font-size: clamp(18px, 3.2vw, 34px);">Happy 46th birthday daddy</div>
+    <div id="countdown" style="font-size: clamp(12px, 1.6vw, 18px);">--d --:--:--</div>
+  </div>
 
-    // Ground
-    const groundHeight = 50;
-    const ground = { x: 0, y: canvas.height - groundHeight, w: canvas.width, h: groundHeight, color: "saddlebrown" };
+  <div id="instructions">Arrows = move • Space = jump • Touch the title to toggle text & spawn a stair (must step off and touch again)</div>
 
-    // Blocks
-    let blocks = [];
+<script>
+/* -----------------------------
+   Birthday Stair Builder (HTML)
+   - Drop right1.png,right2.png,left1.png,left2.png next to this file
+   - Works with or without images (fallback shapes)
+   ----------------------------- */
 
-    // Text trigger
-    const text = { x: 300, y: ground.y - 40, w: 100, h: 30, label: "TOUCH ME" };
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
 
-    // Controls
-    const keys = {};
-    window.addEventListener("keydown", e => keys[e.code] = true);
-    window.addEventListener("keyup", e => keys[e.code] = false);
+function resizeCanvas() {
+  // keep aspect ratio and fit to window
+  const maxW = Math.min(window.innerWidth - 40, 1100);
+  const maxH = Math.min(window.innerHeight - 120, 700);
+  const ratio = 4/3;
+  let w = maxW, h = Math.round(w / ratio);
+  if (h > maxH) { h = maxH; w = Math.round(h * ratio); }
+  canvas.width = w; canvas.height = h;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
-    function updatePlayer() {
-      // Movement
-      if (keys["ArrowRight"]) player.dx = player.speed;
-      else if (keys["ArrowLeft"]) player.dx = -player.speed;
-      else player.dx = 0;
-      if (keys["Space"] && player.grounded) { player.dy = player.jump; player.grounded = false; }
+/* ---------- Game constants ---------- */
+const W = () => canvas.width;
+const H = () => canvas.height;
+const GROUND_H = Math.round( H() * 0.12 ); // brown ground height
 
-      // Apply gravity
-      player.dy += player.gravity;
-      player.x += player.dx;
-      player.y += player.dy;
+/* ---------- Load optional images (2 frames per direction) ---------- */
+function tryLoad(src) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => resolve(null);
+    img.src = src;
+  });
+}
 
-      // Collide with ground
-      if (player.y + player.h > ground.y) {
-        player.y = ground.y - player.h;
-        player.dy = 0;
-        player.grounded = true;
-      }
+let frames = { right: [null, null], left: [null, null] };
 
-      // Collide with blocks
-      blocks.forEach(b => {
-        if (player.x < b.x + b.w && player.x + player.w > b.x &&
-            player.y + player.h > b.y && player.y < b.y + b.h) {
-          player.y = b.y - player.h;
-          player.dy = 0;
-          player.grounded = true;
-        }
-      });
+(async function loadImgs() {
+  frames.right[0] = await tryLoad('right 1.png');
+  frames.right[1] = await tryLoad('right 2.png');
+  frames.left[0]  = await tryLoad('left 1.png');
+  frames.left[1]  = await tryLoad('left 2.png');
+})();
 
-      // Touch text → add new block forever
-      if (player.x < text.x + text.w && player.x + player.w > text.x &&
-          player.y < text.y + text.h && player.y + player.h > text.y) {
-        blocks.push({ x: text.x, y: text.y - 40, w: 100, h: 20, color: "#8B4513" });
-        text.x += 120; // move text further so player can keep building stairs
-      }
-    }
+/* ---------- Player physics ---------- */
+const player = {
+  x: 80,
+  y: 0, // will set to ground later
+  w: 48,
+  h: 64,
+  vx: 0,
+  vy: 0,
+  speed: 3.4,
+  jumpPower: -12,
+  grounded: false,
+  dir: 'right',
+  animIndex: 0,
+  animTimer: 0, // ms
+  animDelay: 160 // ms between frames
+};
 
-    function draw() {
-      ctx.clearRect(0,0,canvas.width,canvas.height);
+function placePlayerOnGround() {
+  player.y = H() - GROUND_H - player.h;
+}
+placePlayerOnGround();
+window.addEventListener('resize', placePlayerOnGround);
 
-      // Ground
-      ctx.fillStyle = ground.color;
-      ctx.fillRect(ground.x, ground.y, ground.w, ground.h);
+/* ---------- Blocks/stairs (permanent) ---------- */
+let blocks = [];
+// initial demo blocks (diagonal)
+for (let i=0;i<3;i++){
+  const bx = 140 + i*72;
+  const by = H() - GROUND_H - 22 - i*34;
+  bloc
 
-      // Player
-      ctx.fillStyle = player.color;
-      ctx.fillRect(player.x, player.y, player.w, player.h);
 
-      // Text
-      ctx.fillStyle = "white";
-      ctx.font = "20px Trebuchet MS";
-      ctx.fillText(text.label, text.x, text.y + 20);
-
-      // Blocks
-      blocks.forEach(b => {
-        ctx.fillStyle = b.color;
-        ctx.fillRect(b.x, b.y, b.w, b.h);
-      });
-    }
-
-    function loop() {
-      updatePlayer();
-      draw();
-      requestAnimationFrame(loop);
-    }
-    loop();
-
-    // Countdown timer
-    const countdownEl = document.getElementById("countdown");
-    const targetDate = new Date("2025-12-31T23:59:59").getTime();
-
-    function updateCountdown() {
-      const now = Date.now();
-      const diff = targetDate - now;
-
-      const days = Math.floor(diff / (1000*60*60*24));
-      const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
-      const minutes = Math.floor((diff % (1000*60*60)) / (1000*60));
-      const seconds = Math.floor((diff % (1000*60)) / 1000);
-
-      countdownEl.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
-    }
-    setInterval(updateCountdown, 1000);
-    updateCountdown();
-  </script>
-</body>
-</html>
