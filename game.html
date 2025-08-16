@@ -1,94 +1,84 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
   <title>Birthday Game</title>
   <style>
-    canvas { display: block; margin: auto; background: #f0f0f0; }
+    body { margin: 0; overflow: hidden; background: #87CEEB; }
+    canvas { display: block; margin: auto; background: #d0f0ff; }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas" width="800" height="600"></canvas>
+<canvas id="gameCanvas"></canvas>
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
+canvas.width = 800;
+canvas.height = 600;
 
-let player = { x: 100, y: 500, w: 60, h: 80, dx: 0, dy: 0, speed: 4, onGround: false, facingRight: true, frame: 0 };
-let gravity = 0.5;
-let jumpPower = -10;
+// Load player frames
+const playerFrames = {
+  idle: new Image(),
+  left: [new Image(), new Image()],
+  right: [new Image(), new Image()]
+};
+playerFrames.idle.src = "left 1.png"; // replace with your image
+playerFrames.left[0].src = "left 1.png";
+playerFrames.left[1].src = "left 2.png";
+playerFrames.right[0].src = "right 1.png";
+playerFrames.right[1].src = "right 2.png";
 
-// Load player images (replace with your real sprites)
-let rightFrames = [new Image(), new Image()];
-rightFrames[0].src = "right 1.png";
-rightFrames[1].src = "right 2.png";
-let leftFrames = [new Image(), new Image()];
-leftFrames[0].src = "left 1.png";
-leftFrames[1].src = "left 2.png";
+let frameIndex = 0;
+let frameTimer = 0;
 
-// Platforms
-let platforms = [{x:0, y:580, w:800, h:20}];
-let stairs = [];
+// Player object
+let player = { x: 100, y: 500, w: 50, h: 50, dx: 0, dy: 0, speed: 3 };
+
+// Ground
+const groundHeight = 50;
+
+// Countdown target
+const targetDate = new Date(new Date().getFullYear(), 7, 13, 0, 0, 0); // Aug 13
+if (targetDate < new Date()) targetDate.setFullYear(targetDate.getFullYear() + 1);
 
 // Text toggle
-let textToggle = false;
+let birthdayText = "Happy 46th Birthday Daddy";
+let touchCount = 0;
 
-// Time bar function
-function getProgress() {
-  let now = new Date();
-  let next = new Date(now.getFullYear(), 7, 13); // Aug=7 (0-indexed)
-  if (now > next) next.setFullYear(now.getFullYear()+1);
-  let total = (next - new Date(next.getFullYear()-1,7,13));
-  let left = (next - now);
-  return 1 - left/total;
-}
+// Stair blocks
+let blocks = [];
+
+// Input
+let keys = {};
+window.addEventListener("keydown", e => keys[e.key] = true);
+window.addEventListener("keyup", e => keys[e.key] = false);
 
 function update() {
   // Movement
+  player.dx = 0;
+  player.dy = 0;
+  if (keys["ArrowLeft"]) player.dx = -player.speed;
+  if (keys["ArrowRight"]) player.dx = player.speed;
+  if (keys["ArrowUp"]) player.dy = -player.speed;
+  if (keys["ArrowDown"]) player.dy = player.speed;
+  
   player.x += player.dx;
-  player.dy += gravity;
   player.y += player.dy;
 
-  // Ground/platform collision
-  player.onGround = false;
-  for (let plat of platforms.concat(stairs)) {
-    if (player.x < plat.x+plat.w && player.x+player.w > plat.x &&
-        player.y < plat.y+plat.h && player.y+player.h > plat.y) {
-      if (player.dy > 0) {
-        player.y = plat.y - player.h;
-        player.dy = 0;
-        player.onGround = true;
-      }
-    }
-  }
+  // Stay inside canvas
+  if (player.x < 0) player.x = 0;
+  if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
+  if (player.y < 0) player.y = 0;
+  if (player.y + player.h > canvas.height - groundHeight) 
+      player.y = canvas.height - groundHeight - player.h;
 
-  // Animate
-  if (player.dx !== 0) {
-    player.frame = (player.frame + 0.15) % 2;
-  } else {
-    player.frame = 0;
-  }
-
-  // Collision with text area
-  if (player.y < 60 && player.x > 250 && player.x < 550) {
-    textToggle = !textToggle;
-    // Add a stair block each touch
-    stairs.push({x:100+stairs.length*60, y:540-stairs.length*40, w:60, h:20});
-  }
-}
-
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // Draw platforms
-  ctx.fillStyle = "#444";
-  for (let plat of platforms.concat(stairs)) {
-    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
-  }
-
-  // Progress bar
-  let progress = getProgress();
-  ctx.strokeStyle = "black";
-  ctx.
-
+  // Collision with text
+  const textX = canvas.width/2 - 150;
+  const textY = 40;
+  if (player.x < textX + 300 && player.x + player.w > textX &&
+      player.y < textY + 40 && player.y + player.h > textY) {
+    touchCount++;
+    birthdayText = (to
 
 
 
