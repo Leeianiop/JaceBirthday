@@ -1,356 +1,105 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Birthday Stair Builder (GitHub Pages)</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #dff3ff;
-      --ground: #8B4513;
-      --block: #6f3d12;
-      --text: #2b1b7a;
-      --bar-bg: #efefef;
-      --bar-fill: #2d9cdb;
-    }
-    html,body { height:100%; margin:0; font-family: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background: var(--bg); }
-    #wrap { width:100%; height:100%; display:flex; align-items:center; justify-content:center; }
-    canvas { background: linear-gradient(#dff3ff,#bfefff); display:block; border-radius:8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); }
-    #hud { position: absolute; top: 16px; left: 50%; transform: translateX(-50%); text-align:center; pointer-events:none; }
-    #title { font-weight:900; color:var(--text); letter-spacing:1px; text-shadow: 2px 2px 0 rgba(0,0,0,0.12); pointer-events:auto; }
-    #countdown { margin-top:6px; font-weight:700; background: rgba(255,255,255,0.85); padding:6px 14px; border-radius:12px; box-shadow: 0 4px 8px rgba(0,0,0,0.08); pointer-events:none;}
-    #instructions { position: absolute; left:16px; bottom:16px; background:rgba(255,255,255,0.8); padding:8px 12px; border-radius:8px; font-size:14px; }
-  </style>
+<meta charset="UTF-8">
+<title>Countdown & Player Example</title>
+<style>
+  body { background: #f0f0f0; display: flex; flex-direction: column; align-items: center; }
+  canvas { background: #fff; margin-top: 20px; border: 1px solid #000; }
+</style>
 </head>
 <body>
-  <div id="wrap">
-    <canvas id="game"></canvas>
-  </div>
 
-  <div id="hud" aria-hidden="true">
-    <div id="title" style="font-size: clamp(18px, 3.2vw, 34px);">Happy 46th birthday daddy</div>
-    <div id="countdown" style="font-size: clamp(12px, 1.6vw, 18px);">--d --:--:--</div>
-  </div>
-
-  <div id="instructions">Arrows = move • Space = jump • Touch the title to toggle text & spawn a stair (must step off and touch again)</div>
+<h1 id="countdown"></h1>
+<canvas id="gameCanvas" width="800" height="400"></canvas>
 
 <script>
-/* -----------------------------
-   Birthday Stair Builder (HTML)
-   - Drop right1.png,right2.png,left1.png,left2.png next to this file
-   - Works with or without images (fallback shapes)
-   ----------------------------- */
-
-const canvas = document.getElementById('game');
+const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-function resizeCanvas() {
-  // keep aspect ratio and fit to window
-  const maxW = Math.min(window.innerWidth - 40, 1100);
-  const maxH = Math.min(window.innerHeight - 120, 700);
-  const ratio = 4/3;
-  let w = maxW, h = Math.round(w / ratio);
-  if (h > maxH) { h = maxH; w = Math.round(h * ratio); }
-  canvas.width = w; canvas.height = h;
+// --- Countdown setup ---
+function getNextCountdown() {
+    const now = new Date();
+    let target = new Date(now.getFullYear(), 7, 13); // August
+    if (now > target) target.setFullYear(now.getFullYear() + 1);
+    return target;
 }
-window.addEventListener('resize', resizeCanvas);
-resizeCanvas();
+let targetDate = getNextCountdown();
 
-/* ---------- Game constants ---------- */
-const W = () => canvas.width;
-const H = () => canvas.height;
-const GROUND_H = Math.round( H() * 0.12 ); // brown ground height
-
-/* ---------- Load optional images (2 frames per direction) ---------- */
-function tryLoad(src) {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => resolve(null);
-    img.src = src;
-  });
-}
-
-let frames = { right: [null, null], left: [null, null] };
-
-(async function loadImgs() {
-  frames.right[0] = await tryLoad('right 1.png');
-  frames.right[1] = await tryLoad('right 2.png');
-  frames.left[0]  = await tryLoad('left 1.png');
-  frames.left[1]  = await tryLoad('left 2.png');
-})();
-
-/* ---------- Player physics ---------- */
-const player = {
-  x: 80,
-  y: 0, // will set to ground later
-  w: 48,
-  h: 64,
-  vx: 0,
-  vy: 0,
-  speed: 3.4,
-  jumpPower: -12,
-  grounded: false,
-  dir: 'right',
-  animIndex: 0,
-  animTimer: 0, // ms
-  animDelay: 160 // ms between frames
+// --- Load images ---
+const playerImages = {
+    right: [new Image(), new Image()],
+    left: [new Image(), new Image()]
 };
+playerImages.right[0].src = "player_right1.png";
+playerImages.right[1].src = "player_right2.png";
+playerImages.left[0].src = "player_left1.png";
+playerImages.left[1].src = "player_left2.png";
 
-function placePlayerOnGround() {
-  player.y = H() - GROUND_H - player.h;
-}
-placePlayerOnGround();
-window.addEventListener('resize', placePlayerOnGround);
+const cakeImages = [new Image(), new Image()];
+cakeImages[0].src = "cake normal.png";
+cakeImages[1].src = "cake eaten.png";
 
-/* ---------- Blocks/stairs (permanent) ---------- */
-let blocks = [];
-// initial demo blocks (diagonal)
-for (let i=0;i<3;i++){
-  const bx = 140 + i*72;
-  const by = H() - GROUND_H - 22 - i*34;
-  blocks.push({ x:bx, y:by, w:72, h:22 });
-}
+// --- Player setup ---
+let player = { x: 400, y: 300, width: 50, height: 60, dir: "right", frame: 0, jumping: false, jumpProgress: 0 };
+const playerSpeed = 5;
+const jumpHeight = 40;
 
-/* ---------- Title text (touchable) ---------- */
-const titleEl = document.getElementById('title');
-const countdownEl = document.getElementById('countdown');
-let titleTextA = "Happy 46th birthday daddy";
-let titleTextB = "Happy 46th birthday jace";
-let titleToggle = false;
-titleEl.textContent = titleTextA;
-let touchingTitlePrev = false;
+// --- Cake setup ---
+let cake = { x: 600, y: 300, width: 60, height: 60, frame: 0 };
 
-/* ---------- Countdown target: next Aug 13 ---------- */
-function nextAug13(now=new Date()){
-  let y = now.getFullYear();
-  let t = new Date(y, 7, 13, 0, 0, 0, 0); // month 7 = Aug
-  if (now >= t) t = new Date(y+1, 7, 13, 0, 0, 0, 0);
-  return t;
-}
-let targetDate = nextAug13();
-
-/* ---------- Input ---------- */
+// --- Key handling ---
 const keys = {};
-window.addEventListener('keydown', (e)=>{ keys[e.code] = true; });
-window.addEventListener('keyup', (e)=>{ keys[e.code] = false; });
+document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-/* ---------- Utility ---------- */
-function rectsOverlap(a,b){
-  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+// --- Game loop ---
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Countdown
+    const now = new Date();
+    let diff = targetDate - now;
+    if (diff <= 0) targetDate = getNextCountdown();
+    diff = targetDate - now;
+    const days = Math.floor(diff / (1000*60*60*24));
+    const hours = Math.floor((diff / (1000*60*60)) % 24);
+    const minutes = Math.floor((diff / (1000*60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    // --- Player movement ---
+    if (keys['arrowleft']) { player.x -= playerSpeed; player.dir="left"; player.frame=(player.frame+1)%2; }
+    else if (keys['arrowright']) { player.x += playerSpeed; player.dir="right"; player.frame=(player.frame+1)%2; }
+    else { player.frame = 0; }
+
+    // Jump
+    if (keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpProgress = 0; }
+    if (player.jumping) {
+        player.y -= 5;
+        player.jumpProgress++;
+        if (player.jumpProgress >= jumpHeight/5) player.jumping = false;
+    } else if (player.y < 300) { player.y += 5; } // fall back down
+
+    // --- Cake interaction ---
+    cake.frame = keys['a'] ? 1 : 0;
+
+    // --- Draw player ---
+    const pImg = playerImages[player.dir][player.frame];
+    ctx.drawImage(pImg, player.x, player.y, player.width, player.height);
+
+    // --- Draw cake ---
+    const cImg = cakeImages[cake.frame];
+    ctx.drawImage(cImg, cake.x, cake.y, cake.width, cake.height);
+    ctx.fillStyle = "black";
+    ctx.font = "16px Arial";
+    ctx.fillText("Press A to eat", cake.x + 5, cake.y - 10);
+
+    requestAnimationFrame(gameLoop);
 }
-
-/* ---------- Game loop ---------- */
-let last = performance.now();
-
-function update(dt) {
-  // controls
-  let moveX = 0;
-  if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1;
-  if (keys['ArrowRight'] || keys['KeyD']) moveX = 1;
-
-  player.vx = moveX * player.speed;
-  if (moveX < 0) player.dir = 'left';
-  else if (moveX > 0) player.dir = 'right';
-
-  // Jump
-  if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.grounded) {
-    player.vy = player.jumpPower;
-    player.grounded = false;
-  }
-
-  // Apply gravity
-  player.vy += 0.7; // gravity
-  player.x += player.vx;
-  player.y += player.vy;
-
-  // Screen bounds
-  player.x = Math.max(0, Math.min(player.x, W() - player.w));
-
-  // Collide with ground
-  const groundTop = H() - GROUND_H;
-  if (player.y + player.h >= groundTop) {
-    player.y = groundTop - player.h;
-    player.vy = 0;
-    player.grounded = true;
-  } else {
-    // Collide with blocks (only from top)
-    player.grounded = false;
-    for (let b of blocks) {
-      if (player.vy >= 0) {
-        if (player.x + player.w > b.x && player.x < b.x + b.w) {
-          if (player.y + player.h <= b.y + player.vy + 8 && player.y + player.h + player.vy >= b.y) {
-            // landed on block
-            player.y = b.y - player.h;
-            player.vy = 0;
-            player.grounded = true;
-          }
-        }
-      }
-    }
-  }
-
-  // Animation timing
-  player.animTimer += dt;
-  if (Math.abs(player.vx) > 0.1) {
-    if (player.animTimer >= player.animDelay) {
-      player.animTimer = 0;
-      player.animIndex = (player.animIndex + 1) % 2;
-    }
-  } else {
-    player.animIndex = 0;
-    player.animTimer = 0;
-  }
-
-  // Title rect (on-canvas area of title)
-  // Compute where the title is drawn on canvas so we can detect collision:
-  // The HUD title sits centered at top; compute its on-canvas bounding box
-  const titleFont = Math.round(Math.max(14, Math.min(34, W() * 0.035))); // scale
-  ctx.font = `900 ${titleFont}px Inter, system-ui, -apple-system, "Segoe UI"`;
-  const titleText = titleToggle ? titleTextB : titleTextA;
-  const textWidth = ctx.measureText(titleText).width;
-  const textX = (W() - textWidth) / 2;
-  const textY = 6; // small gap from top
-  const textH = titleFont + 6;
-  const textRect = { x: textX, y: textY, w: textWidth, h: textH };
-
-  // Player rect for collision
-  const playerRect = { x: player.x, y: player.y, w: player.w, h: player.h };
-
-  const touchingTitle = rectsOverlap(playerRect, textRect);
-  if (touchingTitle && !touchingTitlePrev) {
-    // edge-trigger: toggle & spawn a permanent block
-    titleToggle = !titleToggle;
-    titleEl.textContent = titleToggle ? titleTextB : titleTextA;
-    // spawn new stair block in diagonal sequence
-    const i = blocks.length;
-    const newW = Math.round(W() * 0.09); // scale block width to screen
-    const newH = Math.max(18, Math.round(newW * 0.28));
-    const nx = Math.round(120 + i * (newW - 8));
-    let ny = Math.round(H() - GROUND_H - newH - i * (newH + 10));
-    if (ny < 40) ny = 40;
-    blocks.push({ x: nx, y: ny, w: newW, h: newH });
-  }
-  touchingTitlePrev = touchingTitle;
-}
-
-function draw() {
-  // background
-  ctx.clearRect(0,0,canvas.width, canvas.height);
-  // sky gradient already via CSS background; draw subtle clouds/ground shadow if wanted
-
-  // draw ground
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ground') || '#8B4513';
-  ctx.fillRect(0, H() - GROUND_H, W(), GROUND_H);
-
-  // draw blocks (permanent stairs)
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--block') || '#6f3d12';
-  for (let b of blocks) {
-    roundRect(ctx, b.x, b.y, b.w, b.h, 6, true, false);
-    // highlight
-    ctx.fillStyle = 'rgba(255,255,255,0.06)';
-    ctx.fillRect(b.x + 4, b.y + 4, b.w - 8, Math.min(6, b.h));
-    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--block') || '#6f3d12';
-  }
-
-  // draw player (image or fallback)
-  const img = (player.dir === 'right') ? frames.right[player.animIndex] : frames.left[player.animIndex];
-  if (img && img.complete) {
-    // scale image to player's size (image may be different)
-    ctx.drawImage(img, player.x, player.y, player.w, player.h);
-  } else {
-    // fallback capsule with face
-    roundRect(ctx, player.x, player.y, player.w, player.h, 10, true, false);
-    // face
-    ctx.fillStyle = '#111';
-    ctx.beginPath(); ctx.arc(player.x + player.w*0.33, player.y + player.h*0.35, 3, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.arc(player.x + player.w*0.66, player.y + player.h*0.35, 3, 0, Math.PI*2); ctx.fill();
-    ctx.fillRect(player.x + player.w*0.38, player.y + player.h*0.62, player.w*0.24, 4);
-  }
-
-  // draw countdown bar & text on canvas too (complementing HUD)
-  const { timeStr, prog } = getCountdownAndProgress();
-  // draw bar background
-  const barW = Math.round(W() * 0.78);
-  const barH = Math.round(Math.max(12, W()*0.012));
-  const barX = Math.round((W() - barW) / 2);
-  const barY = Math.round( H() * 0.06 );
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bar-bg') || '#efefef';
-  roundRect(ctx, barX, barY, barW, barH, barH*0.5, true, false);
-  // fill
-  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bar-fill') || '#2d9cdb';
-  roundRect(ctx, barX, barY, Math.max(4, Math.round(barW * prog)), barH, barH*0.5, true, false);
-  // countdown text
-  ctx.font = `700 ${Math.round(Math.max(12, Math.min(20, W()*0.020)))}px Inter, sans-serif`;
-  ctx.fillStyle = '#fff';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  // draw shadow
-  ctx.fillStyle = 'rgba(0,0,0,0.28)';
-  ctx.fillText(timeStr, barX + barW/2 + 1, barY + barH/2 + 1);
-  ctx.fillStyle = '#fff';
-  ctx.fillText(timeStr, barX + barW/2, barY + barH/2);
-
-  // draw top title in canvas as well (for visual parity; HUD title is actual DOM text)
-  // (we don't need to draw it twice visibly; HUD handles it)
-}
-
-/* ---------- helpers ---------- */
-function roundRect(ctx, x, y, w, h, r, fill=true, stroke=false) {
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.arcTo(x + w, y, x + w, y + h, r);
-  ctx.arcTo(x + w, y + h, x, y + h, r);
-  ctx.arcTo(x, y + h, x, y, r);
-  ctx.arcTo(x, y, x + w, y, r);
-  ctx.closePath();
-  if (fill) ctx.fill();
-  if (stroke) ctx.stroke();
-}
-
-/* ---------- Countdown logic ---------- */
-function getCountdownAndProgress() {
-  const now = new Date();
-  const leftMs = Math.max(0, targetDate - now);
-  const s = Math.floor(leftMs / 1000);
-  const days = Math.floor(s / (3600*24));
-  let r = s % (3600*24);
-  const hours = Math.floor(r / 3600); r %= 3600;
-  const minutes = Math.floor(r / 60);
-  const seconds = r % 60;
-  // progress between prev Aug13 and next Aug13
-  const prev = new Date(targetDate.getFullYear() - 1, 7, 13, 0, 0, 0, 0);
-  const total = (targetDate - prev);
-  const gone = (now - prev);
-  const prog = Math.max(0, Math.min(1, gone / total));
-  const timeStr = `${days}d ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
-  return { timeStr, prog };
-}
-
-/* ---------- main animation ---------- */
-function loop(now) {
-  const dt = Math.min(40, now - (last || now)); last = now;
-  update(dt);
-  draw();
-  requestAnimationFrame(loop);
-}
-let last = 0;
-requestAnimationFrame(loop);
-
-/* ---------- update DOM countdown text periodically ---------- */
-function updateHUDCountdown() {
-  const { timeStr } = getCountdownAndProgress();
-  countdownEl.textContent = timeStr;
-  // also keep title DOM scaled nicely (already handled by CSS clamp)
-}
-setInterval(updateHUDCountdown, 250);
-updateHUDCountdown();
-
-/* ---------- handle resize: recalc player pos if needed ---------- */
-window.addEventListener('resize', ()=>{ resizeCanvas(); placePlayerOnGround(); });
-
-/* ---------- end ---------- */
+gameLoop();
 </script>
+
 </body>
 </html>
+
