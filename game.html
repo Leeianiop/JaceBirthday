@@ -5,8 +5,8 @@
 <title>Birthday Countdown Game</title>
 <style>
   body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
-  canvas { background: #a0d8f1; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-  h1 { cursor: pointer; user-select: none; color: #ff4081; text-shadow: 2px 2px 5px #aaa; }
+  canvas { background: #999999; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
   h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
 </style>
 </head>
@@ -21,7 +21,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- Text click cycle ---
-const texts = ["Happy birthday daddy","Happy birthday Jace ","Happy Birthday lee"];
+const texts = ["Happy Birthday Daddy","Happy Birthday Jace ","Happy Birthday Lee"];
 let textIndex = 0;
 document.getElementById('birthdayText').addEventListener('click', () => {
     textIndex = (textIndex + 1) % texts.length;
@@ -135,6 +135,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
