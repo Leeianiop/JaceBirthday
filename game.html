@@ -98,7 +98,7 @@ function gameLoop() {
     } else if (player.y < 400) { player.y += 20; }
 
     // --- Cake interaction ---
-    cake.frame = keys['a'] ? const 1 : 0;
+    cake.frame = keys['a'] ? 1 : 0;
 
     // --- Draw player ---
     let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
@@ -135,5 +135,6 @@ gameLoop();
 
 </body>
 </html>
+
 
 
