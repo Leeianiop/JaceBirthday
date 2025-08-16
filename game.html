@@ -110,6 +110,250 @@ let blocks = [];
 for (let i=0;i<3;i++){
   const bx = 140 + i*72;
   const by = H() - GROUND_H - 22 - i*34;
-  bloc
+  blocks.push({ x:bx, y:by, w:72, h:22 });
+}
+
+/* ---------- Title text (touchable) ---------- */
+const titleEl = document.getElementById('title');
+const countdownEl = document.getElementById('countdown');
+let titleTextA = "Happy 46th birthday daddy";
+let titleTextB = "Happy 46th birthday jace";
+let titleToggle = false;
+titleEl.textContent = titleTextA;
+let touchingTitlePrev = false;
+
+/* ---------- Countdown target: next Aug 13 ---------- */
+function nextAug13(now=new Date()){
+  let y = now.getFullYear();
+  let t = new Date(y, 7, 13, 0, 0, 0, 0); // month 7 = Aug
+  if (now >= t) t = new Date(y+1, 7, 13, 0, 0, 0, 0);
+  return t;
+}
+let targetDate = nextAug13();
+
+/* ---------- Input ---------- */
+const keys = {};
+window.addEventListener('keydown', (e)=>{ keys[e.code] = true; });
+window.addEventListener('keyup', (e)=>{ keys[e.code] = false; });
+
+/* ---------- Utility ---------- */
+function rectsOverlap(a,b){
+  return a.x < b.x + b.w && a.x + a.w > b.x && a.y < b.y + b.h && a.y + a.h > b.y;
+}
+
+/* ---------- Game loop ---------- */
+let last = performance.now();
+
+function update(dt) {
+  // controls
+  let moveX = 0;
+  if (keys['ArrowLeft'] || keys['KeyA']) moveX = -1;
+  if (keys['ArrowRight'] || keys['KeyD']) moveX = 1;
+
+  player.vx = moveX * player.speed;
+  if (moveX < 0) player.dir = 'left';
+  else if (moveX > 0) player.dir = 'right';
+
+  // Jump
+  if ((keys['Space'] || keys['ArrowUp'] || keys['KeyW']) && player.grounded) {
+    player.vy = player.jumpPower;
+    player.grounded = false;
+  }
+
+  // Apply gravity
+  player.vy += 0.7; // gravity
+  player.x += player.vx;
+  player.y += player.vy;
+
+  // Screen bounds
+  player.x = Math.max(0, Math.min(player.x, W() - player.w));
+
+  // Collide with ground
+  const groundTop = H() - GROUND_H;
+  if (player.y + player.h >= groundTop) {
+    player.y = groundTop - player.h;
+    player.vy = 0;
+    player.grounded = true;
+  } else {
+    // Collide with blocks (only from top)
+    player.grounded = false;
+    for (let b of blocks) {
+      if (player.vy >= 0) {
+        if (player.x + player.w > b.x && player.x < b.x + b.w) {
+          if (player.y + player.h <= b.y + player.vy + 8 && player.y + player.h + player.vy >= b.y) {
+            // landed on block
+            player.y = b.y - player.h;
+            player.vy = 0;
+            player.grounded = true;
+          }
+        }
+      }
+    }
+  }
+
+  // Animation timing
+  player.animTimer += dt;
+  if (Math.abs(player.vx) > 0.1) {
+    if (player.animTimer >= player.animDelay) {
+      player.animTimer = 0;
+      player.animIndex = (player.animIndex + 1) % 2;
+    }
+  } else {
+    player.animIndex = 0;
+    player.animTimer = 0;
+  }
+
+  // Title rect (on-canvas area of title)
+  // Compute where the title is drawn on canvas so we can detect collision:
+  // The HUD title sits centered at top; compute its on-canvas bounding box
+  const titleFont = Math.round(Math.max(14, Math.min(34, W() * 0.035))); // scale
+  ctx.font = `900 ${titleFont}px Inter, system-ui, -apple-system, "Segoe UI"`;
+  const titleText = titleToggle ? titleTextB : titleTextA;
+  const textWidth = ctx.measureText(titleText).width;
+  const textX = (W() - textWidth) / 2;
+  const textY = 6; // small gap from top
+  const textH = titleFont + 6;
+  const textRect = { x: textX, y: textY, w: textWidth, h: textH };
+
+  // Player rect for collision
+  const playerRect = { x: player.x, y: player.y, w: player.w, h: player.h };
+
+  const touchingTitle = rectsOverlap(playerRect, textRect);
+  if (touchingTitle && !touchingTitlePrev) {
+    // edge-trigger: toggle & spawn a permanent block
+    titleToggle = !titleToggle;
+    titleEl.textContent = titleToggle ? titleTextB : titleTextA;
+    // spawn new stair block in diagonal sequence
+    const i = blocks.length;
+    const newW = Math.round(W() * 0.09); // scale block width to screen
+    const newH = Math.max(18, Math.round(newW * 0.28));
+    const nx = Math.round(120 + i * (newW - 8));
+    let ny = Math.round(H() - GROUND_H - newH - i * (newH + 10));
+    if (ny < 40) ny = 40;
+    blocks.push({ x: nx, y: ny, w: newW, h: newH });
+  }
+  touchingTitlePrev = touchingTitle;
+}
+
+function draw() {
+  // background
+  ctx.clearRect(0,0,canvas.width, canvas.height);
+  // sky gradient already via CSS background; draw subtle clouds/ground shadow if wanted
+
+  // draw ground
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--ground') || '#8B4513';
+  ctx.fillRect(0, H() - GROUND_H, W(), GROUND_H);
+
+  // draw blocks (permanent stairs)
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--block') || '#6f3d12';
+  for (let b of blocks) {
+    roundRect(ctx, b.x, b.y, b.w, b.h, 6, true, false);
+    // highlight
+    ctx.fillStyle = 'rgba(255,255,255,0.06)';
+    ctx.fillRect(b.x + 4, b.y + 4, b.w - 8, Math.min(6, b.h));
+    ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--block') || '#6f3d12';
+  }
+
+  // draw player (image or fallback)
+  const img = (player.dir === 'right') ? frames.right[player.animIndex] : frames.left[player.animIndex];
+  if (img && img.complete) {
+    // scale image to player's size (image may be different)
+    ctx.drawImage(img, player.x, player.y, player.w, player.h);
+  } else {
+    // fallback capsule with face
+    roundRect(ctx, player.x, player.y, player.w, player.h, 10, true, false);
+    // face
+    ctx.fillStyle = '#111';
+    ctx.beginPath(); ctx.arc(player.x + player.w*0.33, player.y + player.h*0.35, 3, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.arc(player.x + player.w*0.66, player.y + player.h*0.35, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillRect(player.x + player.w*0.38, player.y + player.h*0.62, player.w*0.24, 4);
+  }
+
+  // draw countdown bar & text on canvas too (complementing HUD)
+  const { timeStr, prog } = getCountdownAndProgress();
+  // draw bar background
+  const barW = Math.round(W() * 0.78);
+  const barH = Math.round(Math.max(12, W()*0.012));
+  const barX = Math.round((W() - barW) / 2);
+  const barY = Math.round( H() * 0.06 );
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bar-bg') || '#efefef';
+  roundRect(ctx, barX, barY, barW, barH, barH*0.5, true, false);
+  // fill
+  ctx.fillStyle = getComputedStyle(document.documentElement).getPropertyValue('--bar-fill') || '#2d9cdb';
+  roundRect(ctx, barX, barY, Math.max(4, Math.round(barW * prog)), barH, barH*0.5, true, false);
+  // countdown text
+  ctx.font = `700 ${Math.round(Math.max(12, Math.min(20, W()*0.020)))}px Inter, sans-serif`;
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  // draw shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.28)';
+  ctx.fillText(timeStr, barX + barW/2 + 1, barY + barH/2 + 1);
+  ctx.fillStyle = '#fff';
+  ctx.fillText(timeStr, barX + barW/2, barY + barH/2);
+
+  // draw top title in canvas as well (for visual parity; HUD title is actual DOM text)
+  // (we don't need to draw it twice visibly; HUD handles it)
+}
+
+/* ---------- helpers ---------- */
+function roundRect(ctx, x, y, w, h, r, fill=true, stroke=false) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+  if (fill) ctx.fill();
+  if (stroke) ctx.stroke();
+}
+
+/* ---------- Countdown logic ---------- */
+function getCountdownAndProgress() {
+  const now = new Date();
+  const leftMs = Math.max(0, targetDate - now);
+  const s = Math.floor(leftMs / 1000);
+  const days = Math.floor(s / (3600*24));
+  let r = s % (3600*24);
+  const hours = Math.floor(r / 3600); r %= 3600;
+  const minutes = Math.floor(r / 60);
+  const seconds = r % 60;
+  // progress between prev Aug13 and next Aug13
+  const prev = new Date(targetDate.getFullYear() - 1, 7, 13, 0, 0, 0, 0);
+  const total = (targetDate - prev);
+  const gone = (now - prev);
+  const prog = Math.max(0, Math.min(1, gone / total));
+  const timeStr = `${days}d ${String(hours).padStart(2,'0')}:${String(minutes).padStart(2,'0')}:${String(seconds).padStart(2,'0')}`;
+  return { timeStr, prog };
+}
+
+/* ---------- main animation ---------- */
+function loop(now) {
+  const dt = Math.min(40, now - (last || now)); last = now;
+  update(dt);
+  draw();
+  requestAnimationFrame(loop);
+}
+let last = 0;
+requestAnimationFrame(loop);
+
+/* ---------- update DOM countdown text periodically ---------- */
+function updateHUDCountdown() {
+  const { timeStr } = getCountdownAndProgress();
+  countdownEl.textContent = timeStr;
+  // also keep title DOM scaled nicely (already handled by CSS clamp)
+}
+setInterval(updateHUDCountdown, 250);
+updateHUDCountdown();
+
+/* ---------- handle resize: recalc player pos if needed ---------- */
+window.addEventListener('resize', ()=>{ resizeCanvas(); placePlayerOnGround(); });
+
+/* ---------- end ---------- */
+</script>
+</body>
+</html>
+
 
 
