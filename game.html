@@ -31,10 +31,10 @@ const playerImages = {
     right: [new Image(), new Image()],
     left: [new Image(), new Image()]
 };
-playerImages.right[0].src = "player_right1.png";
-playerImages.right[1].src = "player_right2.png";
-playerImages.left[0].src = "player_left1.png";
-playerImages.left[1].src = "player_left2.png";
+playerImages.right[0].src = "right 1.png";
+playerImages.right[1].src = "right 2.png";
+playerImages.left[0].src = "left 1.png";
+playerImages.left[1].src = "left 2.png";
 
 const cakeImages = [new Image(), new Image()];
 cakeImages[0].src = "cake normal.png";
@@ -53,11 +53,8 @@ const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-// --- Game loop ---
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // Countdown
+// --- Countdown update every second ---
+function updateCountdown() {
     const now = new Date();
     let diff = targetDate - now;
     if (diff <= 0) targetDate = getNextCountdown();
@@ -67,11 +64,26 @@ function gameLoop() {
     const minutes = Math.floor((diff / (1000*60)) % 60);
     const seconds = Math.floor((diff / 1000) % 60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+}
+setInterval(updateCountdown, 1000);
+updateCountdown();
+
+// --- Game loop ---
+function gameLoop() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
 
     // --- Player movement ---
-    if (keys['arrowleft']) { player.x -= playerSpeed; player.dir="left"; player.frame=(player.frame+1)%2; }
-    else if (keys['arrowright']) { player.x += playerSpeed; player.dir="right"; player.frame=(player.frame+1)%2; }
-    else { player.frame = 0; }
+    if (keys['arrowleft']) {
+        player.x -= playerSpeed;
+        player.dir = "left";
+        player.frame = (player.frame + 1) % 2;
+    } else if (keys['arrowright']) {
+        player.x += playerSpeed;
+        player.dir = "right";
+        player.frame = (player.frame + 1) % 2;
+    } else {
+        player.frame = 0; // idle frame
+    }
 
     // Jump
     if (keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpProgress = 0; }
@@ -79,7 +91,7 @@ function gameLoop() {
         player.y -= 5;
         player.jumpProgress++;
         if (player.jumpProgress >= jumpHeight/5) player.jumping = false;
-    } else if (player.y < 300) { player.y += 5; } // fall back down
+    } else if (player.y < 300) { player.y += 5; } // fall down
 
     // --- Cake interaction ---
     cake.frame = keys['a'] ? 1 : 0;
