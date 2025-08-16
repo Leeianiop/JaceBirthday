@@ -2,85 +2,136 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Birthday Game</title>
+  <title>Stair Builder</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #87CEEB; }
-    canvas { display: block; margin: auto; background: #d0f0ff; }
+    body { margin: 0; overflow: hidden; background: #222; }
+    canvas { display: block; background: #87CEEB; }
+    #countdown {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: 'Trebuchet MS', sans-serif;
+      font-size: 24px;
+      color: #fff;
+      background: rgba(0,0,0,0.6);
+      padding: 8px 16px;
+      border-radius: 10px;
+      letter-spacing: 2px;
+    }
   </style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
-<script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
-canvas.width = 800;
-canvas.height = 600;
+  <div id="countdown"></div>
+  <canvas id="game"></canvas>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
 
-// Load player frames
-const playerFrames = {
-  idle: new Image(),
-  left: [new Image(), new Image()],
-  right: [new Image(), new Image()]
-};
-playerFrames.idle.src = "left 1.png"; // replace with your image
-playerFrames.left[0].src = "left 1.png";
-playerFrames.left[1].src = "left 2.png";
-playerFrames.right[0].src = "right 1.png";
-playerFrames.right[1].src = "right 2.png";
+    // Player
+    const player = { x: 100, y: 100, w: 40, h: 40, color: "red", dx: 0, dy: 0, speed: 5, gravity: 0.5, jump: -10, grounded: false };
 
-let frameIndex = 0;
-let frameTimer = 0;
+    // Ground
+    const groundHeight = 50;
+    const ground = { x: 0, y: canvas.height - groundHeight, w: canvas.width, h: groundHeight, color: "saddlebrown" };
 
-// Player object
-let player = { x: 100, y: 500, w: 50, h: 50, dx: 0, dy: 0, speed: 3 };
+    // Blocks
+    let blocks = [];
 
-// Ground
-const groundHeight = 50;
+    // Text trigger
+    const text = { x: 300, y: ground.y - 40, w: 100, h: 30, label: "TOUCH ME" };
 
-// Countdown target
-const targetDate = new Date(new Date().getFullYear(), 7, 13, 0, 0, 0); // Aug 13
-if (targetDate < new Date()) targetDate.setFullYear(targetDate.getFullYear() + 1);
+    // Controls
+    const keys = {};
+    window.addEventListener("keydown", e => keys[e.code] = true);
+    window.addEventListener("keyup", e => keys[e.code] = false);
 
-// Text toggle
-let birthdayText = "Happy 46th Birthday Daddy";
-let touchCount = 0;
+    function updatePlayer() {
+      // Movement
+      if (keys["ArrowRight"]) player.dx = player.speed;
+      else if (keys["ArrowLeft"]) player.dx = -player.speed;
+      else player.dx = 0;
+      if (keys["Space"] && player.grounded) { player.dy = player.jump; player.grounded = false; }
 
-// Stair blocks
-let blocks = [];
+      // Apply gravity
+      player.dy += player.gravity;
+      player.x += player.dx;
+      player.y += player.dy;
 
-// Input
-let keys = {};
-window.addEventListener("keydown", e => keys[e.key] = true);
-window.addEventListener("keyup", e => keys[e.key] = false);
+      // Collide with ground
+      if (player.y + player.h > ground.y) {
+        player.y = ground.y - player.h;
+        player.dy = 0;
+        player.grounded = true;
+      }
 
-function update() {
-  // Movement
-  player.dx = 0;
-  player.dy = 0;
-  if (keys["ArrowLeft"]) player.dx = -player.speed;
-  if (keys["ArrowRight"]) player.dx = player.speed;
-  if (keys["ArrowUp"]) player.dy = -player.speed;
-  if (keys["ArrowDown"]) player.dy = player.speed;
-  
-  player.x += player.dx;
-  player.y += player.dy;
+      // Collide with blocks
+      blocks.forEach(b => {
+        if (player.x < b.x + b.w && player.x + player.w > b.x &&
+            player.y + player.h > b.y && player.y < b.y + b.h) {
+          player.y = b.y - player.h;
+          player.dy = 0;
+          player.grounded = true;
+        }
+      });
 
-  // Stay inside canvas
-  if (player.x < 0) player.x = 0;
-  if (player.x + player.w > canvas.width) player.x = canvas.width - player.w;
-  if (player.y < 0) player.y = 0;
-  if (player.y + player.h > canvas.height - groundHeight) 
-      player.y = canvas.height - groundHeight - player.h;
+      // Touch text → add new block forever
+      if (player.x < text.x + text.w && player.x + player.w > text.x &&
+          player.y < text.y + text.h && player.y + player.h > text.y) {
+        blocks.push({ x: text.x, y: text.y - 40, w: 100, h: 20, color: "#8B4513" });
+        text.x += 120; // move text further so player can keep building stairs
+      }
+    }
 
-  // Collision with text
-  const textX = canvas.width/2 - 150;
-  const textY = 40;
-  if (player.x < textX + 300 && player.x + player.w > textX &&
-      player.y < textY + 40 && player.y + player.h > textY) {
-    touchCount++;
-    birthdayText = (to
+    function draw() {
+      ctx.clearRect(0,0,canvas.width,canvas.height);
 
+      // Ground
+      ctx.fillStyle = ground.color;
+      ctx.fillRect(ground.x, ground.y, ground.w, ground.h);
 
+      // Player
+      ctx.fillStyle = player.color;
+      ctx.fillRect(player.x, player.y, player.w, player.h);
 
+      // Text
+      ctx.fillStyle = "white";
+      ctx.font = "20px Trebuchet MS";
+      ctx.fillText(text.label, text.x, text.y + 20);
 
+      // Blocks
+      blocks.forEach(b => {
+        ctx.fillStyle = b.color;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+      });
+    }
 
+    function loop() {
+      updatePlayer();
+      draw();
+      requestAnimationFrame(loop);
+    }
+    loop();
+
+    // Countdown timer
+    const countdownEl = document.getElementById("countdown");
+    const targetDate = new Date("2025-12-31T23:59:59").getTime();
+
+    function updateCountdown() {
+      const now = Date.now();
+      const diff = targetDate - now;
+
+      const days = Math.floor(diff / (1000*60*60*24));
+      const hours = Math.floor((diff % (1000*60*60*24)) / (1000*60*60));
+      const minutes = Math.floor((diff % (1000*60*60)) / (1000*60));
+      const seconds = Math.floor((diff % (1000*60)) / 1000);
+
+      countdownEl.textContent = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    }
+    setInterval(updateCountdown, 1000);
+    updateCountdown();
+  </script>
+</body>
+</html>
