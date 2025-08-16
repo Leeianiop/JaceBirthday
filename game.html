@@ -5,8 +5,8 @@
 <title>Birthday Countdown Game</title>
 <style>
   body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
-  canvas { background: #999999; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
+  canvas { background: #a0d8f1; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  h1 { cursor: pointer; user-select: none; color: #ff4081; text-shadow: 2px 2px 5px #aaa; }
   h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
 </style>
 </head>
@@ -21,7 +21,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- Text click cycle ---
-const texts = ["Happy Birthday Daddy","Happy Birthday Jace ","Happy Birthday Lee"];
+const texts = ["Happy 46th birthday daddy","Jace","Lee"];
 let textIndex = 0;
 document.getElementById('birthdayText').addEventListener('click', () => {
     textIndex = (textIndex + 1) % texts.length;
@@ -31,89 +31,47 @@ document.getElementById('birthdayText').addEventListener('click', () => {
 // --- Countdown setup ---
 function getNextCountdown() {
     const now = new Date();
-    let target = new Date(now.getFullYear(), 7, 13); // August
+    let target = new Date(now.getFullYear(), 7, 13);
     if (now > target) target.setFullYear(now.getFullYear() + 1);
     return target;
 }
 let targetDate = getNextCountdown();
-
-// --- Load images ---
-const playerRightFrames = [new Image(), new Image()];
-playerRightFrames[0].src = 'right 1.png';
-playerRightFrames[1].src = 'right 2.png';
-const playerLeftFrames = [new Image(), new Image()];
-playerLeftFrames[0].src = 'left 1.png';
-playerLeftFrames[1].src = 'left 2.png';
-let player = { x: 400, y: 400, width: 2400, height: 3000, dir: "right", frame: 0, jumping: false, jumpTime: 0 }; // 30x bigger
-
-const cakeFrames = [new Image(), new Image()];
-cakeFrames[0].src = 'cake normal.png';
-cakeFrames[1].src = 'cake eaten.png';
-let cake = { x: 800, y: 400, width: 2400, height: 2400, frame: 0 };
 
 // --- Key handling ---
 const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-// --- Game loop ---
-const playerSpeed = 10; 
-const maxFlyTime = 30; // half-second at 60fps
+// --- Sprite loader ---
+const playerRightFrames = [new Image(), new Image()];
+playerRightFrames[0].src = 'right 1.png';
+playerRightFrames[1].src = 'right 2.png';
+const playerLeftFrames = [new Image(), new Image()];
+playerLeftFrames[0].src = 'left 1.png';
+playerLeftFrames[1].src = 'left 2.png';
 
-function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+const cakeFrames = [new Image(), new Image()];
+cakeFrames[0].src = 'cake normal.png';
+cakeFrames[1].src = 'cake eaten.png';
 
-    // Countdown
-    const now = new Date();
-    let diff = targetDate - now;
-    if (diff <= 0) targetDate = getNextCountdown();
-    diff = targetDate - now;
-    const days = Math.floor(diff / (1000*60*60*24));
-    const hours = Math.floor((diff / (1000*60*60)) % 24);
-    const minutes = Math.floor((diff / (1000*60)) % 60);
-    const seconds = Math.floor((diff / 1000) % 60);
-    document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+let imagesToLoad = 6;
+[playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]].forEach(img=>{
+    img.onload = ()=>{ imagesToLoad--; }
+});
 
-    // --- Draw stylish countdown bar ---
-    const barX = 100, barY = 100, barWidth = 1000, barHeight = 40, radius = 20;
-    ctx.fillStyle = "#ddd";
-    roundRect(ctx, barX, barY, barWidth, barHeight, radius, true, false);
+// --- Game objects ---
+let player = {
+    x: 400, y: 400,
+    width: 80, height: 100,
+    dir: "right", frame: 0,
+    jumping: false, jumpTime: 0
+};
+let cake = { x: 800, y: 400, width: 80, height: 80, frame: 0 };
 
-    let totalSeconds = (targetDate - now)/1000;
-    let startCountdown = getNextCountdown();
-    let progress = 1 - totalSeconds / ((targetDate - startCountdown)/1000);
-    ctx.fillStyle = "#76c7c0";
-    roundRect(ctx, barX, barY, barWidth * progress, barHeight, radius, true, false);
+const playerSpeed = 10;
+const maxFlyTime = 30; // ~0.5s at 60fps
 
-    // --- Player movement ---
-    if (keys['arrowleft']) { player.x -= playerSpeed; player.dir="left"; player.frame=(player.frame+1)%2; }
-    else if (keys['arrowright']) { player.x += playerSpeed; player.dir="right"; player.frame=(player.frame+1)%2; }
-    else { player.frame = 0; }
-
-    // Jump / Fly
-    if (keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpTime=0; }
-    if (player.jumping) {
-        if (player.jumpTime < maxFlyTime) { player.y -= 20; player.jumpTime++; }
-        else player.jumping = false;
-    } else if (player.y < 400) { player.y += 20; }
-
-    // --- Cake interaction ---
-    cake.frame = keys['a'] ? 1 : 0;
-
-    // --- Draw player ---
-    let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
-    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-
-    // --- Draw cake ---
-    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
-    ctx.fillStyle = "black";
-    ctx.font = "24px Arial";
-    ctx.fillText("Press A to eat", cake.x + 20, cake.y - 20);
-
-    requestAnimationFrame(gameLoop);
-}
-
-// Rounded rectangle helper
+// --- Rounded rectangle helper ---
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.beginPath();
     ctx.moveTo(x+radius, y);
@@ -126,8 +84,63 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     ctx.lineTo(x, y+radius);
     ctx.quadraticCurveTo(x, y, x+radius, y);
     ctx.closePath();
-    if (fill) ctx.fill();
-    if (stroke) ctx.stroke();
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
+}
+
+// --- Game loop ---
+function gameLoop() {
+    if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
+
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Countdown
+    const now = new Date();
+    if(now >= targetDate) targetDate = getNextCountdown();
+    let diff = targetDate - now;
+    const days = Math.floor(diff / (1000*60*60*24));
+    const hours = Math.floor((diff / (1000*60*60)) % 24);
+    const minutes = Math.floor((diff / (1000*60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    // Countdown bar
+    const barX=100, barY=100, barWidth=1000, barHeight=40, radius=20;
+    ctx.fillStyle = "#ddd";
+    roundRect(ctx, barX, barY, barWidth, barHeight, radius, true, false);
+
+    let totalSeconds = (targetDate - now)/1000;
+    let startCountdown = getNextCountdown();
+    let progress = 1 - totalSeconds / ((targetDate - startCountdown)/1000);
+    ctx.fillStyle = "#76c7c0";
+    roundRect(ctx, barX, barY, barWidth*Math.max(0,progress), barHeight, radius, true, false);
+
+    // Player movement
+    if(keys['arrowleft']) { player.x -= playerSpeed; player.dir="left"; player.frame=(player.frame+1)%2; }
+    else if(keys['arrowright']) { player.x += playerSpeed; player.dir="right"; player.frame=(player.frame+1)%2; }
+    else { player.frame=0; }
+
+    // Jump/fly
+    if(keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpTime=0; }
+    if(player.jumping){
+        if(player.jumpTime < maxFlyTime){ player.y -= 20; player.jumpTime++; }
+        else player.jumping=false;
+    } else if(player.y < 400){ player.y += 20; }
+
+    // Cake interaction
+    cake.frame = keys['a'] ? 1 : 0;
+
+    // Draw player
+    let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
+    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
+
+    // Draw cake
+    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
+    ctx.fillStyle="black";
+    ctx.font="24px Arial";
+    ctx.fillText("Press A to eat", cake.x+20, cake.y-20);
+
+    requestAnimationFrame(gameLoop);
 }
 
 gameLoop();
@@ -135,7 +148,3 @@ gameLoop();
 
 </body>
 </html>
-
-
-
-
