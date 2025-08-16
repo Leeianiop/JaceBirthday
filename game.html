@@ -1,167 +1,33 @@
-import pygame
-import datetime
+import pygame, sys, os
 
 pygame.init()
-
-# --- Screen setup ---
-WIDTH, HEIGHT = 800, 600
-screen = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Birthday Game")
-
-# --- Clock ---
+screen = pygame.display.set_mode((800, 600))
 clock = pygame.time.Clock()
-FPS = 60
 
-# --- Colors ---
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-BLUE = (50, 50, 255)
-GREEN = (0, 200, 0)
+# Debug: list files in current folder
+print("Files in current folder:", os.listdir())
 
-# --- Player settings ---
-player_size = (50, 60)
-player_x, player_y = 100, HEIGHT - player_size[1] - 50
-player_speed = 4
-player_vel_y = 0
-gravity = 0.5
-on_ground = False
+# Try to load one image
+try:
+    img = pygame.image.load("right 1.png").convert_alpha()
+    img = pygame.transform.scale(img, (100, 100))  # resize
+except Exception as e:
+    print("Error loading image:", e)
+    pygame.quit()
+    sys.exit()
 
-# Placeholder surfaces for animations
-player_img_right = [
-    pygame.transform.scale(pygame.image.load("right 1.png").convert_alpha(), player_size),
-    pygame.transform.scale(pygame.image.load("right 2.png").convert_alpha(), player_size)
-]
-
-player_img_left = [
-    pygame.transform.scale(pygame.image.load("left 1.png").convert_alpha(), player_size),
-    pygame.transform.scale(pygame.image.load("left 2.png").convert_alpha(), player_size)
-]
-
-facing_right = True
-frame_index = 0
-frame_counter = 0
-frame_delay = 10
-
-# --- Platforms / stairs ---
-platforms = [pygame.Rect(0, HEIGHT - 20, WIDTH, 20)]
-block_size = 40
-
-# --- Text switching ---
-text_toggle = False  # False = daddy, True = jace
-font = pygame.font.SysFont(None, 40)
-
-# --- Bar countdown ---
-def time_until_next_aug13():
-    now = datetime.datetime.now()
-    target_year = now.year
-    target_date = datetime.datetime(target_year, 8, 13)
-    if now >= target_date:
-        target_year += 1
-        target_date = datetime.datetime(target_year, 8, 13)
-    return target_date - now
-
-bar_width = WIDTH - 100
-bar_height = 20
-bar_x, bar_y = 50, 20
-
-# --- Main loop ---
 running = True
 while running:
-    clock.tick(FPS)
-    screen.fill(WHITE)
-
-    # --- Events ---
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-    # --- Movement ---
-    keys = pygame.key.get_pressed()
-    dx, dy = 0, 0
-
-    if keys[pygame.K_LEFT]:
-        dx = -player_speed
-        facing_right = False
-    if keys[pygame.K_RIGHT]:
-        dx = player_speed
-        facing_right = True
-    if keys[pygame.K_UP] and on_ground:
-        player_vel_y = -10
-
-    # Gravity
-    player_vel_y += gravity
-    dy += player_vel_y
-
-    # --- Collision with platforms ---
-    on_ground = False
-    new_x = player_x + dx
-    new_y = player_y + dy
-    player_rect = pygame.Rect(new_x, new_y, *player_size)
-
-    for plat in platforms:
-        if player_rect.colliderect(plat):
-            # Moving down
-            if dy > 0:
-                player_rect.bottom = plat.top
-                player_vel_y = 0
-                on_ground = True
-            elif dy < 0:
-                player_rect.top = plat.bottom
-                player_vel_y = 0
-
-    player_x, player_y = player_rect.x, player_rect.y
-
-    # --- Animation frame update ---
-    if dx != 0:
-        frame_counter += 1
-        if frame_counter >= frame_delay:
-            frame_index = (frame_index + 1) % 2
-            frame_counter = 0
-    else:
-        frame_index = 0
-
-    # --- Draw player ---
-    if facing_right:
-        img = player_img_right[frame_index]
-    else:
-        img = player_img_left[frame_index]
-    screen.blit(img, (player_x, player_y))
-
-    # --- Draw platforms ---
-    for plat in platforms:
-        pygame.draw.rect(screen, GREEN, plat)
-
-    # --- Bar countdown ---
-    time_left = time_until_next_aug13()
-    total_seconds = time_left.total_seconds()
-    days_total = (datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year) 
-                  - datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year - 1)).total_seconds()
-    if datetime.datetime.now() >= datetime.datetime.now().replace(month=8, day=13):
-        days_total = (datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year + 1) 
-                      - datetime.datetime.now().replace(month=8, day=13, year=datetime.datetime.now().year)).total_seconds()
-
-    progress = 1 - (total_seconds / days_total)
-    pygame.draw.rect(screen, BLACK, (bar_x, bar_y, bar_width, bar_height), 2)
-    pygame.draw.rect(screen, BLUE, (bar_x, bar_y, bar_width * progress, bar_height))
-
-    # --- Text ---
-    birthday_text = "Happy 46th birthday jace" if text_toggle else "Happy 46th birthday daddy"
-    text_surface = font.render(birthday_text, True, BLACK)
-    text_rect = text_surface.get_rect(center=(WIDTH // 2, bar_y - 20))
-    screen.blit(text_surface, text_rect)
-
-    # --- Collision with text ---
-    if player_rect.colliderect(text_rect):
-        text_toggle = not text_toggle
-        # Add a new block as a stair
-        new_block_x = len(platforms) * block_size
-        new_block_y = HEIGHT - 20 - (len(platforms) * block_size // 2)
-        platforms.append(pygame.Rect(new_block_x, new_block_y, block_size, block_size))
-
+    screen.fill((200, 200, 200))
+    screen.blit(img, (350, 250))  # draw in middle
     pygame.display.flip()
+    clock.tick(60)
 
 pygame.quit()
-
 
 
 
