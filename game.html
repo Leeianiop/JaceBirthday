@@ -1,33 +1,112 @@
-import pygame, sys, os
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Birthday Game</title>
+  <style>
+    canvas { background: #fff; display: block; margin: auto; }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas" width="800" height="600"></canvas>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
 
-pygame.init()
-screen = pygame.display.set_mode((800, 600))
-clock = pygame.time.Clock()
+let player = { x: 100, y: 500, w: 50, h: 60, dx: 0, dy: 0, speed: 4, onGround: false, facingRight: true, frame: 0 };
 
-# Debug: list files in current folder
-print("Files in current folder:", os.listdir())
+let gravity = 0.5;
+let jumpPower = -10;
 
-# Try to load one image
-try:
-    img = pygame.image.load("right 1.png").convert_alpha()
-    img = pygame.transform.scale(img, (100, 100))  # resize
-except Exception as e:
-    print("Error loading image:", e)
-    pygame.quit()
-    sys.exit()
+// Load images
+let rightFrames = [new Image(), new Image()];
+rightFrames[0].src = "right 1.png";
+rightFrames[1].src = "right 2.png";
+let leftFrames = [new Image(), new Image()];
+leftFrames[0].src = "left 1.png";
+leftFrames[1].src = "left 2.png";
 
-running = True
-while running:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            running = False
+let platforms = [{x:0, y:580, w:800, h:20}];
+let textToggle = false;
+let stairs = [];
 
-    screen.fill((200, 200, 200))
-    screen.blit(img, (350, 250))  # draw in middle
-    pygame.display.flip()
-    clock.tick(60)
+function update() {
+  // Movement
+  player.x += player.dx;
+  player.dy += gravity;
+  player.y += player.dy;
 
-pygame.quit()
+  // Ground/platform collision
+  player.onGround = false;
+  for (let plat of platforms.concat(stairs)) {
+    if (player.x < plat.x+plat.w && player.x+player.w > plat.x &&
+        player.y < plat.y+plat.h && player.y+player.h > plat.y) {
+      if (player.dy > 0) {
+        player.y = plat.y - player.h;
+        player.dy = 0;
+        player.onGround = true;
+      }
+    }
+  }
+
+  // Animate
+  if (player.dx !== 0) {
+    player.frame = (player.frame + 0.1) % 2;
+  } else {
+    player.frame = 0;
+  }
+}
+
+function draw() {
+  ctx.clearRect(0,0,800,600);
+
+  // Draw platforms
+  ctx.fillStyle = "green";
+  for (let plat of platforms.concat(stairs)) {
+    ctx.fillRect(plat.x, plat.y, plat.w, plat.h);
+  }
+
+  // Draw bar
+  ctx.fillStyle = "blue";
+  let now = new Date();
+  let next = new Date(now.getFullYear(), 7, 13); // Aug=7 (0-indexed)
+  if (now > next) next.setFullYear(now.getFullYear()+1);
+  let total = (next - new Date(next.getFullYear()-1,7,13));
+  let left = (next - now);
+  let progress = 1 - left/total;
+  ctx.fillRect(50, 20, 700*progress, 20);
+  ctx.strokeRect(50,20,700,20);
+
+  // Draw text
+  ctx.fillStyle = "black";
+  let txt = textToggle ? "Happy 46th birthday jace" : "Happy 46th birthday daddy";
+  ctx.fillText(txt, 300, 15);
+
+  // Draw player
+  let img = player.facingRight ? rightFrames[Math.floor(player.frame)] : leftFrames[Math.floor(player.frame)];
+  ctx.drawImage(img, player.x, player.y, player.w, player.h);
+}
+
+function loop() {
+  update();
+  draw();
+  requestAnimationFrame(loop);
+}
+loop();
+
+// Controls
+document.addEventListener("keydown", e=>{
+  if (e.key==="ArrowLeft") { player.dx = -player.speed; player.facingRight = false; }
+  if (e.key==="ArrowRight") { player.dx = player.speed; player.facingRight = true; }
+  if (e.key==="ArrowUp" && player.onGround) { player.dy = jumpPower; }
+});
+document.addEventListener("keyup", e=>{
+  if (e.key==="ArrowLeft" || e.key==="ArrowRight") player.dx = 0;
+});
+</script>
+</body>
+</html>
+
+
 
 
 
