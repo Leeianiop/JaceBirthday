@@ -28,12 +28,13 @@ on_ground = False
 
 # Placeholder surfaces for animations
 player_img_right = [
-    pygame.image.load("right 1.png").convert_alpha(),
-    pygame.image.load("right 2.png").convert_alpha()
+    pygame.transform.scale(pygame.image.load("right 1.png").convert_alpha(), player_size),
+    pygame.transform.scale(pygame.image.load("right 2.png").convert_alpha(), player_size)
 ]
+
 player_img_left = [
-    pygame.image.load("left 1.png").convert_alpha(),
-    pygame.image.load("left 2.png").convert_alpha()
+    pygame.transform.scale(pygame.image.load("left 1.png").convert_alpha(), player_size),
+    pygame.transform.scale(pygame.image.load("left 2.png").convert_alpha(), player_size)
 ]
 
 facing_right = True
@@ -160,6 +161,7 @@ while running:
     pygame.display.flip()
 
 pygame.quit()
+
 
 
 
