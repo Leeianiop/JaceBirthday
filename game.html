@@ -64,7 +64,7 @@ let player = {
     x: 400, y: 400,
     width: 800, height: 1000,
     dir: "right", frame: 0,
-    jumping: false, jumpTime: 0
+    jumping: false, jumpTime: 0,
 frameTick: 0 // <--- counter
 };
 let cake = { x: 800, y: 400, width: 800, height: 800, frame: 0 };
@@ -118,9 +118,26 @@ function gameLoop() {
     roundRect(ctx, barX, barY, barWidth*Math.max(0,progress), barHeight, radius, true, false);
 
     // Player movement
-    if(keys['arrowleft']) { player.x -= playerSpeed; player.dir="left"; player.frame=(player.frame+1)%2; }
-    else if(keys['arrowright']) { player.x += playerSpeed; player.dir="right"; player.frame=(player.frame+1)%2; }
-    else { player.frame=0; }
+  if(keys['arrowleft']) {
+    player.x -= playerSpeed;
+    player.dir = "left";
+    player.frameTick++;
+    if (player.frameTick > 10) { // higher = slower
+        player.frame = (player.frame + 1) % 2;
+        player.frameTick = 0;
+    }
+} else if(keys['arrowright']) {
+    player.x += playerSpeed;
+    player.dir = "right";
+    player.frameTick++;
+    if (player.frameTick > 10) { 
+        player.frame = (player.frame + 1) % 2;
+        player.frameTick = 0;
+    }
+} else {
+    player.frame = 0;
+    player.frameTick = 0;
+}
 
     // Jump/fly
     if(keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpTime=0; }
@@ -150,5 +167,6 @@ gameLoop();
 
 </body>
 </html>
+
 
 
