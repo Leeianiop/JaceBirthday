@@ -5,14 +5,14 @@
 <title>Birthday Countdown Game</title>
 <style>
   body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
-  canvas { background: #a0d8f1; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-  h1 { cursor: pointer; user-select: none; color: #ff4081; text-shadow: 2px 2px 5px #aaa; }
+  canvas { background: #ffffff; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
   h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
 </style>
 </head>
 <body>
 
-<h1 id="birthdayText">Happy 46th birthday daddy</h1>
+<h1 id="birthdayText">Happy Birthday Daddy</h1>
 <h2 id="countdown"></h2>
 <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
@@ -21,7 +21,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- Text click cycle ---
-const texts = ["Happy 46th birthday daddy","Jace","Lee"];
+const texts = ["Happy 46th Birthday Daddy","Happy 46th Birthday Jace","Happy 46th Birthday Lee"];
 let textIndex = 0;
 document.getElementById('birthdayText').addEventListener('click', () => {
     textIndex = (textIndex + 1) % texts.length;
@@ -62,12 +62,12 @@ let imagesToLoad = 6;
 // --- Game objects ---
 let player = {
     x: 400, y: 400,
-    width: 800, height: 1000,
+    width: 200, height: 250,
     dir: "right", frame: 0,
     jumping: false, jumpTime: 0,
     frameTick: 0 // <--- counter
 };
-let cake = { x: 800, y: 400, width: 800, height: 800, frame: 0 };
+let cake = { x: 800, y: 4000, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
 const maxFlyTime = 30; // ~0.5s at 60fps
@@ -113,7 +113,7 @@ function gameLoop() {
 
     let totalSeconds = (targetDate - now)/1000;
     let startCountdown = getNextCountdown();
-    let progress = 1 - totalSeconds / ((targetDate - startCountdown)/1000);
+    let progress = totalSeconds / ((targetDate - startCountdown)/1000);
     ctx.fillStyle = "#76c7c0";
     roundRect(ctx, barX, barY, barWidth*Math.max(0,progress), barHeight, radius, true, false);
 
@@ -167,6 +167,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
