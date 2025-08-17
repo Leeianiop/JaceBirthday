@@ -167,7 +167,12 @@ if(player.jumping){
     ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
     ctx.fillStyle="black";
     ctx.font="24px Arial";
-    ctx.fillText("Infintely generative cake (Press A to eat)", cake.x+20, cake.y-20);
+   let text = "Infinitely generative cake (Press A to eat)";
+let lines = text.split("\n"); // you can use \n for new 
+
+lines.forEach((line, i) => {
+  ctx.fillText(line, cake.x + 20, cake.y - 20 + i * 20);
+});
 
     requestAnimationFrame(gameLoop);
 }
@@ -177,6 +182,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
