@@ -14,6 +14,7 @@
 
 <h1 id="birthdayText">Happy Birthday Daddy</h1>
 <h2 id="countdown"></h2>
+  <h3 >until next Birthday🎉🎉</h3>
 <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
 <script>
@@ -67,7 +68,7 @@ let player = {
     jumping: false, jumpTime: 0,
     frameTick: 0 // <--- counter
 };
-let cake = { x: 800, y: 300, width: 200, height: 250, frame: 0 };
+let cake = { x: 800, y: 400, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
 const maxFlyTime = 30; // ~0.5s at 60fps
@@ -140,11 +141,20 @@ function gameLoop() {
 }
 
     // Jump/fly
-    if(keys['arrowup'] && !player.jumping) { player.jumping = true; player.jumpTime=0; }
-    if(player.jumping){
-        if(player.jumpTime < maxFlyTime){ player.y -= 20; player.jumpTime++; }
-        else player.jumping=false;
-    } else if(player.y < 400){ player.y += 20; }
+if(keys['arrowup'] && !player.jumping) {
+    player.jumping = true;
+    player.vy = -15; // initial jump velocity
+}
+
+if(player.jumping){
+    player.y += player.vy;
+    player.vy += 1; // gravity pulling down
+    if(player.y >= 400) {
+        player.y = 400;
+        player.jumping = false;
+        player.vy = 0;
+    }
+}
 
     // Cake interaction
     cake.frame = keys['a'] ? 1 : 0;
@@ -157,7 +167,7 @@ function gameLoop() {
     ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
     ctx.fillStyle="black";
     ctx.font="24px Arial";
-    ctx.fillText("Press A to eat", cake.x+20, cake.y-20);
+    ctx.fillText("Infintely generative cake (Press A to eat)", cake.x+20, cake.y-20);
 
     requestAnimationFrame(gameLoop);
 }
@@ -167,6 +177,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
