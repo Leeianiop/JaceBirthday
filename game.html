@@ -94,12 +94,7 @@ function gameLoop() {
     if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
-  if (keys.ArrowRight || keys.ArrowLeft) {
-    player.frameTick++;
-    if (player.frameTick % 10 === 0) {  // change every 10 ticks
-        player.frame = (player.frame + 1) % 8;
-    }
-}
+ 
 
     // Countdown
     const now = new Date();
@@ -155,4 +150,5 @@ gameLoop();
 
 </body>
 </html>
+
 
