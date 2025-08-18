@@ -1,22 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<title>Birthday Countdown Game</title>
-<style>
-  body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
-  canvas { background: #ffffff; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
-  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
-  h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
-</style>
-</head>
-<body>
-
-<h1 id="birthdayText">Happy Birthday Daddy</h1>
-<h2 id="countdown"></h2>
-  <h3 >until next Birthday🎉🎉</h3>
-<canvas id="gameCanvas" width="1200" height="600"></canvas>
-
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -66,12 +47,26 @@ let player = {
     width: 200, height: 250,
     dir: "right", frame: 0,
     jumping: false, jumpTime: 0,
-    frameTick: 0 // <--- counter
+    frameTick: 0
 };
 let cake = { x: 800, y: 300, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
-const maxFlyTime = 30; // ~0.5s at 60fps
+
+// --- Cake eating logic ---
+let eatCount = 0;
+let showImage = false;
+let img = new Image();
+img.src = "obese.png"; // replace with your file path
+
+document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "a") {
+        eatCount++;
+        if (eatCount >= 15) { // threshold
+            showImage = true;
+        }
+    }
+});
 
 // --- Rounded rectangle helper ---
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -95,7 +90,6 @@ function gameLoop() {
     if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
 
     ctx.clearRect(0,0,canvas.width,canvas.height);
- 
 
     // Countdown
     const now = new Date();
@@ -119,109 +113,71 @@ function gameLoop() {
     roundRect(ctx, barX, barY, barWidth*Math.max(0,progress), barHeight, radius, true, false);
 
     // Player movement
-  if(keys['arrowleft']) {
-    player.x -= playerSpeed;
-    player.dir = "left";
-    player.frameTick++;
-    if (player.frameTick > 10) { // higher = slower
-        player.frame = (player.frame + 1) % 2;
+    if(keys['arrowleft']) {
+        player.x -= playerSpeed;
+        player.dir = "left";
+        player.frameTick++;
+        if (player.frameTick > 10) {
+            player.frame = (player.frame + 1) % 2;
+            player.frameTick = 0;
+        }
+    } else if(keys['arrowright']) {
+        player.x += playerSpeed;
+        player.dir = "right";
+        player.frameTick++;
+        if (player.frameTick > 10) { 
+            player.frame = (player.frame + 1) % 2;
+            player.frameTick = 0;
+        }
+    } else {
+        player.frame = 0;
         player.frameTick = 0;
     }
-} else if(keys['arrowright']) {
-    player.x += playerSpeed;
-    player.dir = "right";
-    player.frameTick++;
-    if (player.frameTick > 10) { 
-        player.frame = (player.frame + 1) % 2;
-        player.frameTick = 0;
-    }
-} else {
-    player.frame = 0;
-    player.frameTick = 0;
-}
 
     // Jump/fly
-if(keys['arrowup'] && !player.jumping) {
-    player.jumping = true;
-    player.vy = -15; // initial jump velocity
-}
-
-if(player.jumping){
-    player.y += player.vy;
-    player.vy += 1; // gravity pulling down
-    if(player.y >= 400) {
-        player.y = 400;
-        player.jumping = false;
-        player.vy = 0;
+    if(keys['arrowup'] && !player.jumping) {
+        player.jumping = true;
+        player.vy = -15;
     }
-}
+    if(player.jumping){
+        player.y += player.vy;
+        player.vy += 1;
+        if(player.y >= 400) {
+            player.y = 400;
+            player.jumping = false;
+            player.vy = 0;
+        }
+    }
 
     // Cake interaction
     cake.frame = keys['a'] ? 1 : 0;
 
-    // Draw cake first
-ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
+    // Draw cake
+    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
 
-ctx.fillStyle = "black";
-ctx.font = "24px Arial";
+    ctx.fillStyle = "black";
+    ctx.font = "24px Arial";
+    let text = "Infinitely generative cake\n(Press A to eat)";
+    let lines = text.split("\n"); 
+    let lineSpacing = 35;
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * lineSpacing);
+    }
 
-let text = "Infinitely generative cake\n(Press A to eat)";
-let lines = text.split("\n"); 
-let lineSpacing = 35;
+    // Draw player
+    let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
+    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
 
-for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * lineSpacing);
-}
+    // Show special image after enough eats
+    if (showImage) {
+        ctx.drawImage(img, 100, 100, 200, 200);
+    }
 
-// Draw player LAST so it's always on top
-let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
-ctx.drawImage(pf, player.x, player.y, player.width, player.height);
     requestAnimationFrame(gameLoop);
 }
-  
-// Load the image
-let img = new Image();
-img.src = "obese.png"; // put the actual path of your image here
 
-document.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() === "a") {
-        eatCount++;
-        console.log("Cake eaten:", eatCount);
-
-        if (eatCount >= 15) { // change number as needed
-            showImage = true;
-        }
-    }
-});
-
-// inside your draw loop
-function draw() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    // draw other game stuff here...
-
-    if (showImage) {
-        ctx.drawImage(img, 100, 100, 200, 200); 
-    }
-
-    requestAnimationFrame(draw);
-}
-
-draw();
 gameLoop();
 </script>
-
-</body>
-</html>
-
-
-
-
-
-
-
-
-
 
 
 
