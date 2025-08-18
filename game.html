@@ -159,11 +159,7 @@ if(player.jumping){
     // Cake interaction
     cake.frame = keys['a'] ? 1 : 0;
 
-    // Draw player
-    let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
-    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-
-// Draw cake
+    // Draw cake first
 ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
 
 ctx.fillStyle = "black";
@@ -171,11 +167,15 @@ ctx.font = "24px Arial";
 
 let text = "Infinitely generative cake\n(Press A to eat)";
 let lines = text.split("\n"); 
-let lineSpacing = 35; // adjust spacing here
+let lineSpacing = 35;
 
 for (let i = 0; i < lines.length; i++) {
     ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * lineSpacing);
 }
+
+// Draw player LAST so it's always on top
+let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
+ctx.drawImage(pf, player.x, player.y, player.width, player.height);
     requestAnimationFrame(gameLoop);
 }
 
@@ -184,6 +184,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
