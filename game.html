@@ -178,12 +178,42 @@ let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[p
 ctx.drawImage(pf, player.x, player.y, player.width, player.height);
     requestAnimationFrame(gameLoop);
 }
+  
+// Load the image
+let img = new Image();
+img.src = "yourimage.png"; // put the actual path of your image here
 
+document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "a") {
+        eatCount++;
+        console.log("Cake eaten:", eatCount);
+
+        if (eatCount >= 15) { // change number as needed
+            showImage = true;
+        }
+    }
+});
+
+// inside your draw loop
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // draw other game stuff here...
+
+    if (showImage) {
+        ctx.drawImage(img, 100, 100, 200, 200); 
+    }
+
+    requestAnimationFrame(draw);
+}
+
+draw();
 gameLoop();
 </script>
 
 </body>
 </html>
+
 
 
 
