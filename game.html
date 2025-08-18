@@ -1,3 +1,23 @@
+
+   <!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Birthday Countdown Game</title>
+<style>
+  body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
+  canvas { background: #ffffff; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
+  h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
+</style>
+</head>
+<body>
+
+<h1 id="birthdayText">Happy Birthday Daddy</h1>
+<h2 id="countdown"></h2>
+<h3>until next Birthday🎉🎉</h3>
+<canvas id="gameCanvas" width="1200" height="600"></canvas>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -47,26 +67,19 @@ let player = {
     width: 200, height: 250,
     dir: "right", frame: 0,
     jumping: false, jumpTime: 0,
-    frameTick: 0
+    frameTick: 0 
 };
 let cake = { x: 800, y: 300, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
 
-// --- Cake eating logic ---
+// --- Eat tracking ---
 let eatCount = 0;
 let showImage = false;
-let img = new Image();
-img.src = "obese.png"; // replace with your file path
 
-document.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() === "a") {
-        eatCount++;
-        if (eatCount >= 15) { // threshold
-            showImage = true;
-        }
-    }
-});
+// --- Special image ---
+let img = new Image();
+img.src = "obese.png";
 
 // --- Rounded rectangle helper ---
 function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -84,6 +97,18 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
     if(fill) ctx.fill();
     if(stroke) ctx.stroke();
 }
+
+// --- Cake eating logic ---
+document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "a") {
+        eatCount++;
+        console.log("Cake eaten:", eatCount);
+
+        if (eatCount >= 15) { 
+            showImage = true;
+        }
+    }
+});
 
 // --- Game loop ---
 function gameLoop() {
@@ -134,7 +159,7 @@ function gameLoop() {
         player.frameTick = 0;
     }
 
-    // Jump/fly
+    // Jump
     if(keys['arrowup'] && !player.jumping) {
         player.jumping = true;
         player.vy = -15;
@@ -157,20 +182,18 @@ function gameLoop() {
 
     ctx.fillStyle = "black";
     ctx.font = "24px Arial";
-    let text = "Infinitely generative cake\n(Press A to eat)";
-    let lines = text.split("\n"); 
-    let lineSpacing = 35;
+    let lines = ["Infinitely generative cake", "(Press A to eat)"];
     for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * lineSpacing);
+        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
     }
 
     // Draw player
     let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
     ctx.drawImage(pf, player.x, player.y, player.width, player.height);
 
-    // Show special image after enough eats
+    // Show special image if enough cake eaten
     if (showImage) {
-        ctx.drawImage(img, 100, 100, 200, 200);
+        ctx.drawImage(img, 100, 100, 200, 200); 
     }
 
     requestAnimationFrame(gameLoop);
@@ -179,7 +202,8 @@ function gameLoop() {
 gameLoop();
 </script>
 
-
+</body>
+</html>
 
 
 
