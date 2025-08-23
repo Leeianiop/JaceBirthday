@@ -6,7 +6,12 @@
 <title>Birthday Countdown Game</title>
 <style>
   body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: pacifico; }
-  canvas { background: #ffffff; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  canvas {background: body {
+  background: radial-gradient(circle at 10% 20%, #ffb347 2%, transparent 2%) repeat,
+              radial-gradient(circle at 40% 60%, #ff6961 2%, transparent 2%) repeat,
+              radial-gradient(circle at 80% 30%, #77dd77 2%, transparent 2%) repeat;
+  background-size: 100px 100px;
+} margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
   h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
   h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
 </style>
@@ -193,7 +198,7 @@ function gameLoop() {
 
     // Show special image if enough cake eaten
     if (showImage) {
-        ctx.drawImage(img, 100, -170, 1000, 1000); 
+        ctx.drawImage(img, 100, -150, 1000, 1000); 
     }
 
     requestAnimationFrame(gameLoop);
@@ -204,6 +209,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
