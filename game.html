@@ -1,3 +1,41 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Birthday Game</title>
+<style>
+  body { 
+    background: #ffeedd; 
+    display: flex; 
+    flex-direction: column; 
+    align-items: center; 
+    font-family: Arial, sans-serif; 
+    margin: 0;
+  }
+  #birthdayText {
+    font-size: 28px; 
+    cursor: pointer; 
+    margin-top: 20px;
+  }
+  #countdown {
+    font-size: 22px; 
+    margin-top: 10px;
+  }
+  canvas {
+    background: #ffffff; 
+    margin-top: 20px; 
+    border-radius: 20px; 
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
+  }
+</style>
+</head>
+<body>
+
+<div id="birthdayText">Happy 46th Birthday Daddy</div>
+<div id="countdown"></div>
+<canvas id="gameCanvas" width="1200" height="600"></canvas>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -13,7 +51,7 @@ document.getElementById('birthdayText').addEventListener('click', () => {
 // --- Countdown setup ---
 function getNextCountdown() {
     const now = new Date();
-    let target = new Date(now.getFullYear(), 7, 13);
+    let target = new Date(now.getFullYear(), 7, 13); // August 13
     if (now > target) target.setFullYear(now.getFullYear() + 1);
     return target;
 }
@@ -23,40 +61,23 @@ let targetDate = getNextCountdown();
 const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
-document.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() === "a" && gameRunning) {
-        eatCount++;
-        if (eatCount >= 15) { 
-            showSpecial = true;
-            gameRunning = false;
-        }
-    }
 
-    if (showCharacter && e.code === "Space") {
-        interactionText = "Hi";
-        setTimeout(() => {
-            interactionText = "Character: Hi";
-        }, 1000);
-    }
+// --- Game objects ---
+let player = { x: 400, y: 400, width: 200, height: 250, dir: "right", frame: 0, frameTick: 0, jumping: false, vy:0 };
+let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
+const playerSpeed = 10;
 
-    if (showCharacter && e.code === "KeyB") {
-        riding = true;
-    }
-});
+let gameRunning = true;
+let eatCount = 0;
+let showSpecial = false;
+let showCharacter = false;
+let interactionText = "";
+let riding = false;
 
-// --- Button click handling ---
-canvas.addEventListener("click", (e) => {
-  let rect = canvas.getBoundingClientRect();
-  let mx = e.clientX - rect.left;
-  let my = e.clientY - rect.top;
+// --- Button ---
+let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
 
-  if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
-    showCharacter = true;
-    interactionText = "Press SPACE to interact";
-  }
-});
-
-// --- Sprite loader ---
+// --- Images ---
 const playerRightFrames = [new Image(), new Image()];
 playerRightFrames[0].src = 'right 1.png';
 playerRightFrames[1].src = 'right 2.png';
@@ -68,165 +89,131 @@ const cakeFrames = [new Image(), new Image()];
 cakeFrames[0].src = 'cake normal.png';
 cakeFrames[1].src = 'cake eaten.png';
 
+const buttonImage = new Image(); buttonImage.src = "button.png";
+const characterImage = new Image(); characterImage.src = "mom.png";
+const backgroundImage = new Image(); backgroundImage.src = "paris.png";
+
 let imagesToLoad = 6;
 [playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]].forEach(img=>{
     img.onload = ()=>{ imagesToLoad--; }
 });
 
-// --- Game objects ---
-let player = { x: 400, y: 400, width: 200, height: 250, dir: "right", frame: 0, jumping: false, frameTick: 0 };
-let cake   = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
-
-const playerSpeed = 10;
-
-// --- State ---
-let gameRunning = true;
-let eatCount = 0;
-let showSpecial = false;
-
-let buttonImage = new Image(); buttonImage.src = "button.png";
-let buttonX = 300, buttonY = 400, buttonW = 80, buttonH = 80;
-
-let characterImage = new Image(); characterImage.src = "mom.png";
-let altCakeImage   = new Image(); altCakeImage.src = "plane.png";
-let backgroundImage= new Image(); backgroundImage.src = "paris.png";
-
-let showCharacter = false;
-let interactionText = "";
-let riding = false;
-
-let img = new Image(); img.src = "pixil-frame-0 (1).png";
-
 // --- Helpers ---
-function drawPlayer() {
-    let pf = player.dir==="right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+function drawPlayer(){
+    const pf = player.dir==="right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
     ctx.drawImage(pf, player.x, player.y, player.width, player.height);
 }
-function drawCake() {
+function drawCake(){
     ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
     ctx.fillStyle = "black";
     ctx.font = "24px Arial";
     ctx.fillText("Infinitely generative cake", cake.x + 20, cake.y - 20);
     ctx.fillText("(Press A to eat)", cake.x + 20, cake.y + 15);
 }
-function drawFireworks() {
-  ctx.fillStyle = "white";
-  for (let i = 0; i < 20; i++) {
-    let x = Math.random() * canvas.width;
-    let y = Math.random() * canvas.height;
+function drawFireworks(){
+    for(let i=0;i<20;i++){
+        ctx.fillStyle = `hsl(${Math.random()*360},100%,50%)`;
+        let x=Math.random()*canvas.width;
+        let y=Math.random()*canvas.height;
+        ctx.beginPath();
+        ctx.arc(x,y,2+Math.random()*4,0,Math.PI*2);
+        ctx.fill();
+    }
+}
+function drawButton(){
+    ctx.save();
     ctx.beginPath();
-    ctx.arc(x, y, 2 + Math.random() * 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
+    const r = 15;
+    ctx.moveTo(buttonX + r, buttonY);
+    ctx.lineTo(buttonX + buttonW - r, buttonY);
+    ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
+    ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
+    ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
+    ctx.lineTo(buttonX + r, buttonY + buttonH);
+    ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
+    ctx.lineTo(buttonX, buttonY + r);
+    ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
+    ctx.closePath();
+    ctx.clip();
+    if(buttonImage.complete && buttonImage.naturalWidth!==0){
+        ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
+    } else {
+        ctx.fillStyle="lightblue";
+        ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
+        ctx.fillStyle="black";
+        ctx.font="12px Arial";
+        ctx.fillText("BTN", buttonX+20, buttonY+45);
+    }
+    ctx.restore();
+    ctx.strokeStyle="black"; ctx.lineWidth=2; ctx.stroke();
 }
-// --- Button drawing ---
-function drawButton() {
-  ctx.save();
-  ctx.beginPath();
-  let r = 15; // rounded corner radius
-  ctx.moveTo(buttonX + r, buttonY);
-  ctx.lineTo(buttonX + buttonW - r, buttonY);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-  ctx.lineTo(buttonX + r, buttonY + buttonH);
-  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-  ctx.lineTo(buttonX, buttonY + r);
-  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-  ctx.closePath();
-  ctx.clip();
 
-  if (buttonImage.complete && buttonImage.naturalWidth !== 0) {
-    ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
-  } else {
-    ctx.fillStyle = "lightblue";
-    ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
-    ctx.fillStyle = "black";
-    ctx.font = "12px Arial";
-    ctx.fillText("BTN", buttonX + 20, buttonY + 45);
-  }
+// --- Canvas button click ---
+canvas.addEventListener("click", (e)=>{
+    const rect = canvas.getBoundingClientRect();
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    if(mx>buttonX && mx<buttonX+buttonW && my>buttonY && my<buttonY+buttonH){
+        showCharacter=true;
+        interactionText="Press SPACE to interact";
+    }
+});
 
-  ctx.restore();
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
+// --- Key actions ---
+document.addEventListener("keydown",(e)=>{
+    if(e.key.toLowerCase()==="a" && gameRunning){
+        eatCount++;
+        cake.frame=1;
+        if(eatCount>=15){ showSpecial=true; gameRunning=false; }
+    }
+    if(showCharacter && e.code==="Space"){ interactionText="Character: Hi"; }
+});
 
 // --- Game loop ---
-function gameLoop() {
-    if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
+function gameLoop(){
+    if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
+
     ctx.clearRect(0,0,canvas.width,canvas.height);
+    // Background
+    if(backgroundImage.complete) ctx.drawImage(backgroundImage,0,0,canvas.width,canvas.height);
 
     // Countdown
     const now = new Date();
-    if(now >= targetDate) targetDate = getNextCountdown();
-    let diff = targetDate - now;
-    const days = Math.floor(diff / (1000*60*60*24));
-    const hours = Math.floor((diff / (1000*60*60)) % 24);
-    const minutes = Math.floor((diff / (1000*60)) % 60);
-    const seconds = Math.floor((diff / 1000) % 60);
-    document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+    if(now>=targetDate) targetDate=getNextCountdown();
+    let diff = targetDate-now;
+    const days=Math.floor(diff/(1000*60*60*24));
+    const hours=Math.floor((diff/(1000*60*60))%24);
+    const minutes=Math.floor((diff/(1000*60))%60);
+    const seconds=Math.floor((diff/1000)%60);
+    document.getElementById('countdown').innerText=`${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-    // Movement
-    if(keys['arrowleft']) {
-        player.x -= playerSpeed;
-        player.dir = "left";
-        player.frameTick++;
-        if (player.frameTick > 10) { player.frame = (player.frame + 1) % 2; player.frameTick = 0; }
-    } else if(keys['arrowright']) {
-        player.x += playerSpeed;
-        player.dir = "right";
-        player.frameTick++;
-        if (player.frameTick > 10) { player.frame = (player.frame + 1) % 2; player.frameTick = 0; }
-    } else {
-        player.frame = 0;
-        player.frameTick = 0;
-    }
-    if(keys['arrowup'] && !player.jumping) { player.jumping = true; player.vy = -15; }
-    if(player.jumping){
-        player.y += player.vy; player.vy += 1;
-        if(player.y >= 400) { player.y = 400; player.jumping = false; player.vy = 0; }
-    }
+    // Player movement
+    if(keys['arrowleft']) { player.x-=playerSpeed; player.dir="left"; player.frameTick++; }
+    if(keys['arrowright']){ player.x+=playerSpeed; player.dir="right"; player.frameTick++; }
+    if(player.frameTick>10){ player.frame=(player.frame+1)%2; player.frameTick=0; }
 
-    // Riding state
-    if (riding) {
-      ctx.fillStyle = "black"; ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-      drawFireworks();
-      requestAnimationFrame(gameLoop);
-      return;
-    }
+    // Jump & gravity
+    if(!player.jumping && keys[' ']){ player.jumping=true; player.vy=-20; }
+    if(player.jumping){ player.vy+=1; player.y+=player.vy; if(player.y>=400){ player.y=400; player.jumping=false; player.vy=0; } }
 
-    // Normal
-    if (gameRunning && !showSpecial && !showCharacter) {
-      cake.frame = keys['a'] ? 1 : 0;
-      drawCake();
-      drawPlayer();
-    }
-
-    // Always draw button
+    // Draw objects
+    drawCake();
+    drawPlayer();
     drawButton();
-
-    // Character mode
-    if (showCharacter) {
-      ctx.drawImage(characterImage, 200, 200, 100, 100);
-      ctx.fillStyle = "black"; ctx.font = "20px Arial";
-      ctx.fillText(interactionText, 200, 180);
-      ctx.drawImage(altCakeImage, 300, 250, 100, 100);
-      ctx.fillText("Press B to ride", 300, 240);
+    if(showCharacter){
+        ctx.drawImage(characterImage,600,300,150,200);
+        ctx.fillStyle="black"; ctx.font="20px Arial";
+        ctx.fillText(interactionText,600,280);
     }
-
-    // Special mode
-    if (showSpecial) {
-        ctx.drawImage(img, 100, -130, 1000, 1000); 
-    }
+    if(showSpecial) drawFireworks();
 
     requestAnimationFrame(gameLoop);
 }
 gameLoop();
 </script>
 
-
+</body>
+</html>
 
 
 
