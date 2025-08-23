@@ -3,13 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <title>Birthday Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
 <style>
   body { 
     background: #ffeedd; 
     display: flex; 
     flex-direction: column; 
     align-items: center; 
-    font-family: Arial, sans-serif; 
+    font-family: 'Pacifico', cursive; 
     margin: 0;
   }
   #birthdayText {
@@ -111,7 +112,7 @@ function drawCake(){
     if(cf.complete) ctx.drawImage(cf,cake.x,cake.y,cake.width,cake.height);
     else { ctx.fillStyle="pink"; ctx.fillRect(cake.x,cake.y,cake.width,cake.height);}
     ctx.fillStyle="black";
-    ctx.font="24px Arial";
+    ctx.font="24px Pacifico";
     ctx.fillText("Infinitely generative cake", cake.x+20, cake.y-20);
     ctx.fillText("(Press A to eat)", cake.x+20, cake.y+15);
 }
@@ -165,7 +166,10 @@ document.addEventListener("keydown", e=>{
     if(e.key.toLowerCase()==="a" && gameRunning){
         eatCount++;
         cake.frame=1;
-        if(eatCount>=15){ showSpecial=true; gameRunning=false; }
+        if(eatCount>=15){ 
+            showSpecial=true; 
+            gameRunning=false; 
+        }
     }
     if(showCharacter && e.code==="Space"){ interactionText="Character: Hi"; }
     if(showCharacter && e.code==="KeyB"){ riding=true; }
@@ -190,15 +194,29 @@ function gameLoop(){
     const seconds = Math.floor((diff/1000)%60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-    // Player movement
-    if(keys['arrowleft']){ player.x-=playerSpeed; player.dir="left"; player.frameTick++; }
-    else if(keys['arrowright']){ player.x+=playerSpeed; player.dir="right"; player.frameTick++; }
-    else { player.frame=0; player.frameTick=0; }
-    if(player.frameTick>10){ player.frame=(player.frame+1)%2; player.frameTick=0; }
+    // --- Countdown bar ---
+    const totalTime = targetDate - new Date(targetDate.getFullYear(),0,1); // total year ms
+    const elapsed = now - new Date(now.getFullYear(),0,1);
+    const percent = Math.min(elapsed/totalTime,1);
 
-    // Jump & gravity
-    if(keys['arrowup'] && !player.jumping){ player.jumping=true; player.vy=-15; }
-    if(player.jumping){ player.y+=player.vy; player.vy+=1; if(player.y>=400){ player.y=400; player.jumping=false; player.vy=0; } }
+    ctx.fillStyle="black";
+    ctx.fillRect(200,50,800,30); // outer black frame
+    ctx.fillStyle="white";
+    ctx.fillRect(202,52,796,26); // inner white frame
+    ctx.fillStyle="#ff6666";
+    ctx.fillRect(202,52,796*percent,26); // fill
+
+    // Player movement
+    if(gameRunning){
+        if(keys['arrowleft']){ player.x-=playerSpeed; player.dir="left"; player.frameTick++; }
+        else if(keys['arrowright']){ player.x+=playerSpeed; player.dir="right"; player.frameTick++; }
+        else { player.frame=0; player.frameTick=0; }
+        if(player.frameTick>10){ player.frame=(player.frame+1)%2; player.frameTick=0; }
+
+        // Jump & gravity
+        if(keys['arrowup'] && !player.jumping){ player.jumping=true; player.vy=-15; }
+        if(player.jumping){ player.y+=player.vy; player.vy+=1; if(player.y>=400){ player.y=400; player.jumping=false; player.vy=0; } }
+    }
 
     // Riding mode
     if(riding){ drawFireworks(); }
@@ -212,7 +230,7 @@ function gameLoop(){
     if(showCharacter){
         if(characterImage.complete) ctx.drawImage(characterImage,200,200,100,100);
         if(altCakeImage.complete) ctx.drawImage(altCakeImage,300,250,100,100);
-        ctx.fillStyle="black"; ctx.font="20px Arial";
+        ctx.fillStyle="black"; ctx.font="20px Pacifico";
         ctx.fillText(interactionText,200,180);
         ctx.fillText("Press B to ride",300,240);
     }
@@ -230,12 +248,6 @@ gameLoop();
 
 </body>
 </html>
-
-
-
-
-
-
 
 
 
