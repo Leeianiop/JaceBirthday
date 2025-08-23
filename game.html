@@ -173,12 +173,14 @@ function gameLoop() {
     }
 
     // Always draw button
-    ctx.save();
-    ctx.beginPath();
-    ctx.roundRect(buttonX, buttonY, buttonW, buttonH, 15);
-    ctx.clip();
-    ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
-    ctx.restore();
+// Always draw button (simple rectangle + image)
+ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
+
+// optional: outline so you SEE it even if image missing
+ctx.strokeStyle = "black";
+ctx.lineWidth = 3;
+ctx.strokeRect(buttonX, buttonY, buttonW, buttonH);
+
 
     // Character mode
     if (showCharacter) {
@@ -198,6 +200,7 @@ function gameLoop() {
 }
 gameLoop();
 </script>
+
 
 
 
