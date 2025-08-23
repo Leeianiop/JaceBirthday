@@ -14,7 +14,7 @@
   display: flex; 
   flex-direction: column; 
   align-items: center; 
-  font-family: 'Pacifico', cursive; 
+  font-family: 'Pacifico'; 
 }
 
 canvas {
@@ -39,7 +39,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
 // --- Text click cycle ---
-const texts = ["Happy 46th Birthday Daddy","Happy 46th Birthday Jace","Happy 46th Birthday Lee"];
+const texts = ["Happy 46th Birthday Daddy","Happy 46th Birthday Jace","Happy 46th Birthday Lee""Hapi Bday Mah N-"];
 let textIndex = 0;
 document.getElementById('birthdayText').addEventListener('click', () => {
     textIndex = (textIndex + 1) % texts.length;
@@ -220,6 +220,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
