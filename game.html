@@ -136,7 +136,6 @@ function drawButton() {
   ctx.closePath();
   ctx.clip();
 
-  // Draw image if loaded, else fallback color
   if (buttonImage.complete && buttonImage.naturalWidth !== 0) {
     ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
   } else {
@@ -148,15 +147,6 @@ function drawButton() {
   }
 
   ctx.restore();
-
-  // Outline
-  ctx.strokeStyle = "black";
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-
-  // Outline
   ctx.strokeStyle = "black";
   ctx.lineWidth = 2;
   ctx.stroke();
@@ -167,7 +157,7 @@ function gameLoop() {
     if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Countdown text + bar
+    // Countdown
     const now = new Date();
     if(now >= targetDate) targetDate = getNextCountdown();
     let diff = targetDate - now;
@@ -177,7 +167,7 @@ function gameLoop() {
     const seconds = Math.floor((diff / 1000) % 60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-    // Player movement + jump
+    // Movement
     if(keys['arrowleft']) {
         player.x -= playerSpeed;
         player.dir = "left";
@@ -198,7 +188,7 @@ function gameLoop() {
         if(player.y >= 400) { player.y = 400; player.jumping = false; player.vy = 0; }
     }
 
-    // Riding state → background + fireworks
+    // Riding state
     if (riding) {
       ctx.fillStyle = "black"; ctx.fillRect(0,0,canvas.width,canvas.height);
       ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
@@ -207,17 +197,15 @@ function gameLoop() {
       return;
     }
 
-    // Draw normal game
+    // Normal
     if (gameRunning && !showSpecial && !showCharacter) {
       cake.frame = keys['a'] ? 1 : 0;
       drawCake();
       drawPlayer();
     }
 
-    // Always draw button (rounded corners + image)
-drawButton();
-}
-
+    // Always draw button
+    drawButton();
 
     // Character mode
     if (showCharacter) {
@@ -237,17 +225,6 @@ drawButton();
 }
 gameLoop();
 </script>
-
-
-
-
-
-
-
-
-
-
-
 
 
 
