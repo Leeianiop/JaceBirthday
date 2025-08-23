@@ -1,39 +1,3 @@
-
-   <!DOCTYPE html>
-<html lang="en">
-   <link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
-<head>
-<meta charset="UTF-8">
-<title>Birthday Countdown Game</title>
-<style>
- body { 
-  background: radial-gradient(circle at 10% 20%, #ffb347 2%, transparent 2%) repeat,
-              radial-gradient(circle at 40% 60%, #ff6961 2%, transparent 2%) repeat,
-              radial-gradient(circle at 80% 30%, #77dd77 2%, transparent 2%) repeat;
-  background-size: 100px 100px;
-  display: flex; 
-  flex-direction: column; 
-  align-items: center; 
-  font-family: 'Pacifico', cursive ; 
-}
-
-canvas {
-  background: #ffffff;
-  margin-top: 20px;
-  border-radius: 20px;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-}
-  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
-  h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
-</style>
-</head>
-<body>
-
-<h1 id="birthdayText">Happy Birthday Daddy</h1>
-<h2 id="countdown"></h2>
-<h3>until next Birthday🎉🎉</h3>
-<canvas id="gameCanvas" width="1200" height="600"></canvas>
-
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -59,6 +23,38 @@ let targetDate = getNextCountdown();
 const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "a" && gameRunning) {
+        eatCount++;
+        if (eatCount >= 15) { 
+            showSpecial = true;
+            gameRunning = false;
+        }
+    }
+
+    if (showCharacter && e.code === "Space") {
+        interactionText = "Hi";
+        setTimeout(() => {
+            interactionText = "Character: Hi";
+        }, 1000);
+    }
+
+    if (showCharacter && e.code === "KeyB") {
+        riding = true;
+    }
+});
+
+// --- Button click handling ---
+canvas.addEventListener("click", (e) => {
+  let rect = canvas.getBoundingClientRect();
+  let mx = e.clientX - rect.left;
+  let my = e.clientY - rect.top;
+
+  if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
+    showCharacter = true;
+    interactionText = "Press SPACE to interact";
+  }
+});
 
 // --- Sprite loader ---
 const playerRightFrames = [new Image(), new Image()];
@@ -78,64 +74,58 @@ let imagesToLoad = 6;
 });
 
 // --- Game objects ---
-let player = {
-    x: 400, y: 400,
-    width: 200, height: 250,
-    dir: "right", frame: 0,
-    jumping: false, jumpTime: 0,
-    frameTick: 0 
-};
-let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
+let player = { x: 400, y: 400, width: 200, height: 250, dir: "right", frame: 0, jumping: false, frameTick: 0 };
+let cake   = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
 
-// --- Eat tracking ---
+// --- State ---
 let gameRunning = true;
 let eatCount = 0;
 let showSpecial = false;
 
-// --- Special image ---
-let img = new Image();
-img.src = "pixil-frame-0 (1).png";
+let buttonImage = new Image(); buttonImage.src = "button.png";
+let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
 
-// --- Rounded rectangle helper ---
-function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
-    ctx.beginPath();
-    ctx.moveTo(x+radius, y);
-    ctx.lineTo(x+width-radius, y);
-    ctx.quadraticCurveTo(x+width, y, x+width, y+radius);
-    ctx.lineTo(x+width, y+height-radius);
-    ctx.quadraticCurveTo(x+width, y+height, x+width-radius, y+height);
-    ctx.lineTo(x+radius, y+height);
-    ctx.quadraticCurveTo(x, y+height, x, y+height-radius);
-    ctx.lineTo(x, y+radius);
-    ctx.quadraticCurveTo(x, y, x+radius, y);
-    ctx.closePath();
-    if(fill) ctx.fill();
-    if(stroke) ctx.stroke();
+let characterImage = new Image(); characterImage.src = "character.png";
+let altCakeImage   = new Image(); altCakeImage.src = "altcake.png";
+let backgroundImage= new Image(); backgroundImage.src = "background.png";
+
+let showCharacter = false;
+let interactionText = "";
+let riding = false;
+
+let img = new Image(); img.src = "pixil-frame-0 (1).png";
+
+// --- Helpers ---
+function drawPlayer() {
+    let pf = player.dir==="right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
 }
-
-// --- Cake eating logic ---
-// --- Cake eating logic ---
-document.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() === "a" && gameRunning) {
-        eatCount++;
-        console.log("Cake eaten:", eatCount);
-
-        if (eatCount >= 15) { 
-            showSpecial = true;
-            gameRunning = false; // 🔹 stop game updates
-        }
-    }
-});
+function drawCake() {
+    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
+    ctx.fillStyle = "black";
+    ctx.font = "24px Arial";
+    ctx.fillText("Infinitely generative cake", cake.x + 20, cake.y - 20);
+    ctx.fillText("(Press A to eat)", cake.x + 20, cake.y + 15);
+}
+function drawFireworks() {
+  ctx.fillStyle = "white";
+  for (let i = 0; i < 20; i++) {
+    let x = Math.random() * canvas.width;
+    let y = Math.random() * canvas.height;
+    ctx.beginPath();
+    ctx.arc(x, y, 2 + Math.random() * 4, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
 
 // --- Game loop ---
 function gameLoop() {
     if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
-
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Countdown
+    // Countdown text + bar
     const now = new Date();
     if(now >= targetDate) targetDate = getNextCountdown();
     let diff = targetDate - now;
@@ -145,98 +135,69 @@ function gameLoop() {
     const seconds = Math.floor((diff / 1000) % 60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-    // Countdown bar
-    const barX=100, barY=100, barWidth=1000, barHeight=40, radius=20;
-    ctx.fillStyle = "#ddd";
-    roundRect(ctx, barX, barY, barWidth, barHeight, radius, true, false);
-
-    let totalSeconds = (targetDate - now)/1000;
-    let startCountdown = getNextCountdown();
-    let progress = totalSeconds / ((targetDate - startCountdown)/1000);
-    ctx.fillStyle = "#76c7c0";
-    roundRect(ctx, barX, barY, barWidth*Math.max(0,progress), barHeight, radius, true, false);
-
-    // Player movement
+    // Player movement + jump
     if(keys['arrowleft']) {
         player.x -= playerSpeed;
         player.dir = "left";
         player.frameTick++;
-        if (player.frameTick > 10) {
-            player.frame = (player.frame + 1) % 2;
-            player.frameTick = 0;
-        }
+        if (player.frameTick > 10) { player.frame = (player.frame + 1) % 2; player.frameTick = 0; }
     } else if(keys['arrowright']) {
         player.x += playerSpeed;
         player.dir = "right";
         player.frameTick++;
-        if (player.frameTick > 10) { 
-            player.frame = (player.frame + 1) % 2;
-            player.frameTick = 0;
-        }
+        if (player.frameTick > 10) { player.frame = (player.frame + 1) % 2; player.frameTick = 0; }
     } else {
         player.frame = 0;
         player.frameTick = 0;
     }
-
-    // Jump
-    if(keys['arrowup'] && !player.jumping) {
-        player.jumping = true;
-        player.vy = -15;
-    }
+    if(keys['arrowup'] && !player.jumping) { player.jumping = true; player.vy = -15; }
     if(player.jumping){
-        player.y += player.vy;
-        player.vy += 1;
-        if(player.y >= 400) {
-            player.y = 400;
-            player.jumping = false;
-            player.vy = 0;
-        }
+        player.y += player.vy; player.vy += 1;
+        if(player.y >= 400) { player.y = 400; player.jumping = false; player.vy = 0; }
     }
 
-  // Only update + draw player/cake if game is still running
-if (gameRunning && !showSpecial) {
-    // Cake interaction
-    cake.frame = keys['a'] ? 1 : 0;
-
-    // Draw cake
-    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
-
-    ctx.fillStyle = "black";
-    ctx.font = "24px Arial";
-    let lines = ["Infinitely generative cake", "(Press A to eat)"];
-    for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
+    // Riding state → background + fireworks
+    if (riding) {
+      ctx.fillStyle = "black"; ctx.fillRect(0,0,canvas.width,canvas.height);
+      ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+      drawFireworks();
+      requestAnimationFrame(gameLoop);
+      return;
     }
 
-    // Draw player
-    let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
-    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-}
+    // Draw normal game
+    if (gameRunning && !showSpecial && !showCharacter) {
+      cake.frame = keys['a'] ? 1 : 0;
+      drawCake();
+      drawPlayer();
+    }
 
+    // Always draw button
+    ctx.save();
+    ctx.beginPath();
+    ctx.roundRect(buttonX, buttonY, buttonW, buttonH, 15);
+    ctx.clip();
+    ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
+    ctx.restore();
 
-// Show special image if enough cake eaten
-if (showSpecial) {
-    ctx.drawImage(img, 100, -130, 1000, 1000); 
-}
+    // Character mode
+    if (showCharacter) {
+      ctx.drawImage(characterImage, 200, 200, 100, 100);
+      ctx.fillStyle = "black"; ctx.font = "20px Arial";
+      ctx.fillText(interactionText, 200, 180);
+      ctx.drawImage(altCakeImage, 300, 250, 100, 100);
+      ctx.fillText("Press B to ride", 300, 240);
+    }
+
+    // Special mode
+    if (showSpecial) {
+        ctx.drawImage(img, 100, -130, 1000, 1000); 
+    }
 
     requestAnimationFrame(gameLoop);
 }
-
 gameLoop();
 </script>
-
-</body>
-</html>
-
-
-
-
-
-
-
-
-
-
 
 
 
