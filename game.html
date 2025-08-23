@@ -173,29 +173,41 @@ function gameLoop() {
     }
 
     // Always draw button (rounded corners + image)
-ctx.save();
-ctx.beginPath();
-let r = 15; // corner radius
-ctx.moveTo(buttonX + r, buttonY);
-ctx.lineTo(buttonX + buttonW - r, buttonY);
-ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-ctx.lineTo(buttonX + r, buttonY + buttonH);
-ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-ctx.lineTo(buttonX, buttonY + r);
-ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-ctx.closePath();
-ctx.clip();
+// --- Button drawing ---
+function drawButton() {
+  ctx.save();
+  ctx.beginPath();
+  let r = 15; // rounded corner radius
+  ctx.moveTo(buttonX + r, buttonY);
+  ctx.lineTo(buttonX + buttonW - r, buttonY);
+  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
+  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
+  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
+  ctx.lineTo(buttonX + r, buttonY + buttonH);
+  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
+  ctx.lineTo(buttonX, buttonY + r);
+  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
+  ctx.closePath();
+  ctx.clip();
 
-// Draw button image clipped into rounded shape
-ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
-ctx.restore();
+  // Draw image if loaded, else fallback color
+  if (buttonImage.complete && buttonImage.naturalWidth !== 0) {
+    ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
+  } else {
+    ctx.fillStyle = "lightblue";
+    ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
+    ctx.fillStyle = "black";
+    ctx.font = "12px Arial";
+    ctx.fillText("BTN", buttonX + 20, buttonY + 45);
+  }
 
-// Optional outline so it's visible
-ctx.strokeStyle = "black";
-ctx.lineWidth = 2;
-ctx.stroke();
+  ctx.restore();
+
+  // Outline
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
 
 
     // Character mode
@@ -216,6 +228,7 @@ ctx.stroke();
 }
 gameLoop();
 </script>
+
 
 
 
