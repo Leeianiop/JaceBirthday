@@ -85,7 +85,7 @@ let eatCount = 0;
 let showSpecial = false;
 
 let buttonImage = new Image(); buttonImage.src = "button.png";
-let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
+let buttonX = 300, buttonY = 400, buttonW = 80, buttonH = 80;
 
 let characterImage = new Image(); characterImage.src = "mom.png";
 let altCakeImage   = new Image(); altCakeImage.src = "plane.png";
@@ -208,7 +208,11 @@ function gameLoop() {
     }
 
     // Always draw button (rounded corners + image)
-drawButton();
+function drawButton() {
+  ctx.fillStyle = "red";
+  ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
+}
+
 
     // Character mode
     if (showCharacter) {
@@ -228,6 +232,7 @@ drawButton();
 }
 gameLoop();
 </script>
+
 
 
 
