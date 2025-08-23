@@ -155,6 +155,13 @@ function drawButton() {
   ctx.stroke();
 }
 
+
+  // Outline
+  ctx.strokeStyle = "black";
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
 // --- Game loop ---
 function gameLoop() {
     if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
@@ -208,9 +215,7 @@ function gameLoop() {
     }
 
     // Always draw button (rounded corners + image)
-function drawButton() {
-  ctx.fillStyle = "red";
-  ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
+drawButton();
 }
 
 
@@ -232,6 +237,7 @@ function drawButton() {
 }
 gameLoop();
 </script>
+
 
 
 
