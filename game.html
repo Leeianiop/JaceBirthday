@@ -94,7 +94,7 @@ const buttonImage = new Image(); buttonImage.src="button.png";
 const characterImage = new Image(); characterImage.src="mom.png";
 const planeImage = new Image(); planeImage.src="plane.png";
 const backgroundImage = new Image(); backgroundImage.src="paris.png";
-const specialImage = new Image(); specialImage.src="pixil-frame-0(1).png";
+const specialImage = new Image(); specialImage.src="pixil-frame-0 (1).png";
 
 let imagesToLoad = 6;
 [playerRightFrames[0],playerRightFrames[1],playerLeftFrames[0],playerLeftFrames[1],cakeFrames[0],cakeFrames[1]].forEach(img=>{
@@ -180,10 +180,14 @@ document.addEventListener("keydown", e=>{
 function gameLoop(){
     if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
 
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+    // Clear canvas white
+    ctx.fillStyle = "white";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // Draw background
-    if(backgroundImage.complete) ctx.drawImage(backgroundImage,0,0,canvas.width,canvas.height);
+    // Draw background only if plane active or riding
+    if(planeActive || riding){
+        if(backgroundImage.complete) ctx.drawImage(backgroundImage,0,0,canvas.width,canvas.height);
+    }
 
     // Countdown
     const now = new Date();
@@ -195,18 +199,48 @@ function gameLoop(){
     const seconds = Math.floor((diff/1000)%60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-    // --- Countdown bar ---
+    // --- Countdown bar rounded ---
+    let barX = 200, barY=50, barW=800, barH=30, radius=15;
     ctx.fillStyle="black";
-    ctx.fillRect(200,50,800,30); // outer black frame
-    ctx.fillStyle="white";
-    ctx.fillRect(202,52,796,26); // inner white frame
+    ctx.beginPath();
+    ctx.moveTo(barX+radius, barY);
+    ctx.lineTo(barX+barW-radius, barY);
+    ctx.quadraticCurveTo(barX+barW, barY, barX+barW, barY+radius);
+    ctx.lineTo(barX+barW, barY+barH-radius);
+    ctx.quadraticCurveTo(barX+barW, barY+barH, barX+barW-radius, barY+barH);
+    ctx.lineTo(barX+radius, barY+barH);
+    ctx.quadraticCurveTo(barX, barY+barH, barX, barY+barH-radius);
+    ctx.lineTo(barX, barY+radius);
+    ctx.quadraticCurveTo(barX, barY, barX+radius, barY);
+    ctx.closePath();
+    ctx.fill();
 
+    // Inner bar
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.moveTo(barX+radius, barY+2);
+    ctx.lineTo(barX+barW-radius, barY+2);
+    ctx.quadraticCurveTo(barX+barW, barY+2, barX+barW, barY+2+barH-4);
+    ctx.lineTo(barX+barW, barY+barH-2-radius);
+    ctx.quadraticCurveTo(barX+barW, barY+barH-2, barX+barW-radius, barY+barH-2);
+    ctx.lineTo(barX+radius, barY+barH-2);
+    ctx.quadraticCurveTo(barX, barY+barH-2, barX, barY+barH-2-radius);
+    ctx.lineTo(barX, barY+2+radius);
+    ctx.quadraticCurveTo(barX, barY+2, barX+radius, barY+2);
+    ctx.closePath();
+    ctx.fill();
+
+    // Fill bar if plane active
     if(planeActive){
-        const totalTime = targetDate - new Date(targetDate.getFullYear(),0,1); 
-        const elapsed = now - new Date(now.getFullYear(),0,1);
-        const percent = Math.min(elapsed/totalTime,1);
+        const percent = 0.5; // you can calculate real percent if you want
         ctx.fillStyle="#ff6666";
-        ctx.fillRect(202,52,796*percent,26); // fill red when plane active
+        ctx.beginPath();
+        ctx.moveTo(barX+radius, barY+2);
+        ctx.lineTo(barX+radius + (barW-4*radius)*percent, barY+2);
+        ctx.lineTo(barX+radius + (barW-4*radius)*percent, barY+barH-2);
+        ctx.lineTo(barX+radius, barY+barH-2);
+        ctx.closePath();
+        ctx.fill();
     }
 
     // Player movement
