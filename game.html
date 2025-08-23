@@ -172,14 +172,30 @@ function gameLoop() {
       drawPlayer();
     }
 
-    // Always draw button
-// Always draw button (simple rectangle + image)
-ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
+    // Always draw button (rounded corners + image)
+ctx.save();
+ctx.beginPath();
+let r = 15; // corner radius
+ctx.moveTo(buttonX + r, buttonY);
+ctx.lineTo(buttonX + buttonW - r, buttonY);
+ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
+ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
+ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
+ctx.lineTo(buttonX + r, buttonY + buttonH);
+ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
+ctx.lineTo(buttonX, buttonY + r);
+ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
+ctx.closePath();
+ctx.clip();
 
-// optional: outline so you SEE it even if image missing
+// Draw button image clipped into rounded shape
+ctx.drawImage(buttonImage, buttonX, buttonY, buttonW, buttonH);
+ctx.restore();
+
+// Optional outline so it's visible
 ctx.strokeStyle = "black";
-ctx.lineWidth = 3;
-ctx.strokeRect(buttonX, buttonY, buttonW, buttonH);
+ctx.lineWidth = 2;
+ctx.stroke();
 
 
     // Character mode
@@ -200,6 +216,7 @@ ctx.strokeRect(buttonX, buttonY, buttonW, buttonH);
 }
 gameLoop();
 </script>
+
 
 
 
