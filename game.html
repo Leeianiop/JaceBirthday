@@ -73,6 +73,7 @@ let showSpecial = false;
 let showCharacter = false;
 let interactionText = "";
 let riding = false;
+let planeActive = false;
 
 // --- Button ---
 let buttonX = 20, buttonY=100, buttonW=80, buttonH=80;
@@ -91,7 +92,7 @@ cakeFrames[1].src="cake eaten.png";
 
 const buttonImage = new Image(); buttonImage.src="button.png";
 const characterImage = new Image(); characterImage.src="mom.png";
-const altCakeImage = new Image(); altCakeImage.src="plane.png";
+const planeImage = new Image(); planeImage.src="plane.png";
 const backgroundImage = new Image(); backgroundImage.src="paris.png";
 const specialImage = new Image(); specialImage.src="pixil-frame-0.png";
 
@@ -157,7 +158,8 @@ canvas.addEventListener("click", e=>{
     let my = e.clientY - rect.top;
     if(mx>buttonX && mx<buttonX+buttonW && my>buttonY && my<buttonY+buttonH){
         showCharacter = true;
-        interactionText = "Press SPACE to interact";
+        planeActive = true;
+        interactionText = "Press B to ride";
     }
 });
 
@@ -171,7 +173,6 @@ document.addEventListener("keydown", e=>{
             gameRunning=false; 
         }
     }
-    if(showCharacter && e.code==="Space"){ interactionText="Character: Hi"; }
     if(showCharacter && e.code==="KeyB"){ riding=true; }
 });
 
@@ -195,16 +196,18 @@ function gameLoop(){
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
     // --- Countdown bar ---
-    const totalTime = targetDate - new Date(targetDate.getFullYear(),0,1); // total year ms
-    const elapsed = now - new Date(now.getFullYear(),0,1);
-    const percent = Math.min(elapsed/totalTime,1);
-
     ctx.fillStyle="black";
     ctx.fillRect(200,50,800,30); // outer black frame
     ctx.fillStyle="white";
     ctx.fillRect(202,52,796,26); // inner white frame
-    ctx.fillStyle="#ff6666";
-    ctx.fillRect(202,52,796*percent,26); // fill
+
+    if(planeActive){
+        const totalTime = targetDate - new Date(targetDate.getFullYear(),0,1); 
+        const elapsed = now - new Date(now.getFullYear(),0,1);
+        const percent = Math.min(elapsed/totalTime,1);
+        ctx.fillStyle="#ff6666";
+        ctx.fillRect(202,52,796*percent,26); // fill red when plane active
+    }
 
     // Player movement
     if(gameRunning){
@@ -227,12 +230,10 @@ function gameLoop(){
     drawButton();
 
     // Character mode
-    if(showCharacter){
-        if(characterImage.complete) ctx.drawImage(characterImage,200,200,100,100);
-        if(altCakeImage.complete) ctx.drawImage(altCakeImage,300,250,100,100);
+    if(showCharacter && planeActive){
+        if(planeImage.complete) ctx.drawImage(planeImage,300,250,100,100);
         ctx.fillStyle="black"; ctx.font="20px Pacifico";
         ctx.fillText(interactionText,200,180);
-        ctx.fillText("Press B to ride",300,240);
     }
 
     // Special mode
@@ -248,6 +249,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
