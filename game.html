@@ -90,8 +90,9 @@ let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
 const playerSpeed = 10;
 
 // --- Eat tracking ---
+let gameRunning = true;
 let eatCount = 0;
-let showImage = false;
+let showSpecial = false;
 
 // --- Special image ---
 let img = new Image();
@@ -115,13 +116,15 @@ function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
 }
 
 // --- Cake eating logic ---
+// --- Cake eating logic ---
 document.addEventListener("keydown", (e) => {
-    if (e.key.toLowerCase() === "a") {
+    if (e.key.toLowerCase() === "a" && gameRunning) {
         eatCount++;
         console.log("Cake eaten:", eatCount);
 
         if (eatCount >= 15) { 
-            showImage = true;
+            showSpecial = true;
+            gameRunning = false; // 🔹 stop game updates
         }
     }
 });
@@ -190,6 +193,8 @@ function gameLoop() {
         }
     }
 
+  // Only update + draw player/cake if game is still running
+if (gameRunning && !showSpecial) {
     // Cake interaction
     cake.frame = keys['a'] ? 1 : 0;
 
@@ -206,11 +211,13 @@ function gameLoop() {
     // Draw player
     let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
     ctx.drawImage(pf, player.x, player.y, player.width, player.height);
+}
 
-    // Show special image if enough cake eaten
-    if (showImage) {
-        ctx.drawImage(img, 100, -130, 1000, 1000); 
-    }
+
+// Show special image if enough cake eaten
+if (showSpecial) {
+    ctx.drawImage(img, 100, -130, 1000, 1000); 
+}
 
     requestAnimationFrame(gameLoop);
 }
@@ -220,6 +227,7 @@ gameLoop();
 
 </body>
 </html>
+
 
 
 
