@@ -176,11 +176,8 @@ document.addEventListener("keydown", e=>{
     if(showCharacter && e.code==="KeyB"){ riding=true; }
 });
 
-// --- Game loop ---
-function gameLoop(){
-    if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
 
-    // Clear canvas white first// --- Game loop ---
+--- Game loop ---
 function gameLoop(){
     if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
 
@@ -274,6 +271,7 @@ function gameLoop(){
 }
 
 gameLoop();
+
 
 
 
