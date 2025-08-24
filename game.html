@@ -1,58 +1,3 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Birthday Game</title>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" />
-<style>
-  :root { --card-w: 1200px; --card-h: 600px; }
-  * { box-sizing: border-box; }
-  body {
-    background: #ffffff; 
-    margin: 0;
-    font-family: 'Pacifico', cursive;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    min-height: 100vh;
-    overflow: hidden; /* keep confetti tidy */
-  }
-  #birthdayText {
-    font-size: 28px;
-    cursor: pointer;
-    margin-top: 20px;
-    z-index: 2;
-  }
-  #countdown {
-    font-size: 22px;
-    margin-top: 10px;
-    z-index: 2;
-  }
-  /* Confetti canvas behind everything */
-  #confetti {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
-  /* Game canvas on top */
-  #gameCanvas {
-    background: #ffffff; 
-    margin-top: 20px;
-    border-radius: 20px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    z-index: 1;
-  }
-</style>
-</head>
-<body>
-
-<canvas id="confetti"></canvas>
-
-<div id="birthdayText">Happy 46th Birthday Daddy</div>
-<div id="countdown"></div>
-<canvas id="gameCanvas" width="1200" height="600"></canvas>
-
 <script>
 /* ========= Base setup ========= */
 const canvas = document.getElementById('gameCanvas');
@@ -71,14 +16,15 @@ document.getElementById('birthdayText').addEventListener('click', () => {
   document.getElementById('birthdayText').innerText = texts[textIndex];
 });
 
-/* ========= Countdown to Aug 13 ========= */
-function getNextCountdown() {
+/* ========= Countdown ========= */
+function getTargetDates() {
   const now = new Date();
-  let target = new Date(now.getFullYear(), 7, 13); // Aug = 7 (0-based)
-  if (now > target) target.setFullYear(now.getFullYear() + 1);
-  return target;
+  let eventDay = new Date(now.getFullYear(), 7, 18); // Aug 18 (0-based month)
+  let nextBirthday = new Date(now.getFullYear() + 1, 7, 18);
+  if (now < eventDay) return { phase: "event", target: eventDay, next: nextBirthday };
+  else return { phase: "birthday", target: nextBirthday, next: new Date(now.getFullYear() + 2, 7, 18) };
 }
-let targetDate = getNextCountdown();
+let countdownState = getTargetDates();
 
 /* ========= Input ========= */
 const keys = {};
@@ -101,6 +47,7 @@ cakeFrames[1].src = 'cake eaten.png';
 const buttonImage = new Image(); buttonImage.src = 'button.png';
 const npcImage    = new Image(); npcImage.src    = 'mom.png';   // mom.png is the NPC
 const planeImage  = new Image(); planeImage.src  = 'plane.png';
+const specialImage = new Image(); specialImage.src = 'special.png'; // your special image
 
 /* ========= Game state ========= */
 let player = {
@@ -112,12 +59,16 @@ let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
 
-let planeActive   = false;  // when true, show plane instead of cake
-let npcVisible    = false;  // controls NPC visibility
-let npcSaidHi     = false;  // whether NPC already greeted
-let typedBuffer   = "";     // for detecting user typing "hi"
+let planeActive   = false;  
+let npcVisible    = false;  
+let npcSaidHi     = false;  
+let typedBuffer   = "";     
 
 let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
+
+/* New special trigger */
+let aPressCount = 0;
+let specialActive = false;
 
 /* ========= Helpers ========= */
 function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
@@ -166,13 +117,18 @@ function drawPlane() {
   else { ctx.fillStyle = 'gray'; ctx.fillRect(650, 340, 350, 180); }
 }
 
+/* Special image */
+function drawSpecial() {
+  if (specialImage.complete) ctx.drawImage(specialImage, 400, 200, 400, 200);
+  else { ctx.fillStyle = 'purple'; ctx.fillRect(400, 200, 400, 200); }
+}
+
 /* NPC bubble that says "Hi" */
 function drawNPC() {
   if (!npcVisible) return;
-  const nx = 320, ny = 340, nw = 160, nh = 220; // npc position/size
+  const nx = 320, ny = 340, nw = 160, nh = 220;
   if (npcImage.complete) ctx.drawImage(npcImage, nx, ny, nw, nh);
   else { ctx.fillStyle = 'orange'; ctx.fillRect(nx, ny, nw, nh); }
-  // speech bubble
   const bx = nx + nw + 20, by = ny + 40, bw = 140, bh = 60, r = 12;
   ctx.fillStyle = 'white';
   drawRoundedRect(bx, by, bw, bh, r, 'white');
@@ -184,9 +140,7 @@ function drawNPC() {
   ctx.fillText('Hi', bx + 15, by + 38);
 }
 
-/* Button with rounded frame, image slightly overdrawn */
 function drawButton() {
-  // Frame clip
   ctx.save();
   ctx.beginPath();
   const r = 15;
@@ -211,20 +165,8 @@ function drawButton() {
   }
   ctx.restore();
 
-  // Outline
   ctx.strokeStyle = 'black';
   ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(buttonX + r, buttonY);
-  ctx.lineTo(buttonX + buttonW - r, buttonY);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-  ctx.lineTo(buttonX + r, buttonY + buttonH);
-  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-  ctx.lineTo(buttonX, buttonY + r);
-  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-  ctx.closePath();
   ctx.stroke();
 }
 
@@ -235,10 +177,9 @@ canvas.addEventListener('click', (e) => {
   const my = e.clientY - rect.top;
 
   if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
-    // Cake instantly becomes plane, NPC appears and says Hi first
     planeActive = true;
     npcVisible  = true;
-    npcSaidHi   = true; // already greeted
+    npcSaidHi   = true;
   }
 });
 
@@ -246,13 +187,16 @@ canvas.addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
 
-  // Eat cake: show eaten frame for 0.5s, then back (only if cake is visible)
   if (!planeActive && k === 'a') {
     cake.frame = 1;
     setTimeout(() => { cake.frame = 0; }, 500);
+
+    aPressCount++;
+    if (aPressCount >= 15) {
+      specialActive = true;
+    }
   }
 
-  // Movement & jump
   if (k === 'arrowup' && !player.jumping) {
     player.jumping = true;
     player.vy = -15;
@@ -267,7 +211,6 @@ document.addEventListener('keypress', (e) => {
     typedBuffer += ch;
     if (typedBuffer.length > 10) typedBuffer = typedBuffer.slice(-10);
     if (typedBuffer.toLowerCase().endsWith('hi')) {
-      // Player said hi back → NPC disappears, plane stays
       npcVisible = false;
       typedBuffer = '';
     }
@@ -276,33 +219,33 @@ document.addEventListener('keypress', (e) => {
 
 /* ========= Game loop ========= */
 function gameLoop() {
-  // Clear
   ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Countdown text (DOM)
   const now = new Date();
-  if (now >= targetDate) targetDate = getNextCountdown();
-  const diff = targetDate - now;
+  if (now >= countdownState.target) {
+    countdownState = { phase: "birthday", target: countdownState.next, next: new Date(countdownState.next.getFullYear() + 1, 7, 18) };
+  }
+  const diff = countdownState.target - now;
   const days = Math.floor(diff / (1000*60*60*24));
   const hours = Math.floor((diff / (1000*60*60)) % 24);
   const minutes = Math.floor((diff / (1000*60)) % 60);
   const seconds = Math.floor((diff / 1000) % 60);
-  document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  document.getElementById('countdown').innerText =
+    `${days}d ${hours}h ${minutes}m ${seconds}s (${countdownState.phase})`;
 
-  // Rounded countdown bar
   const barX = 200, barY = 50, barW = 800, barH = 30, radius = 15;
   drawRoundedRect(barX, barY, barW, barH, radius, 'black');
   drawRoundedRect(barX + 2, barY + 2, barW - 4, barH - 4, radius - 2, 'white');
 
-  // Draw scene
-  if (planeActive) {
+  if (specialActive) {
+    drawSpecial();
+  } else if (planeActive) {
     drawPlane();
   } else {
     drawCake();
   }
 
-  // Player movement & animation (only affects player)
   if (keys['arrowleft']) {
     player.x -= playerSpeed;
     player.dir = 'left';
@@ -320,7 +263,6 @@ function gameLoop() {
     player.frameTick = 0;
   }
 
-  // Jump physics
   if (player.jumping) {
     player.y += player.vy;
     player.vy += 1;
@@ -331,24 +273,18 @@ function gameLoop() {
     }
   }
 
-  // Clamp player to canvas
   player.x = clamp(player.x, 0, canvas.width - player.width);
   player.y = clamp(player.y, 0, canvas.height - player.height);
 
-  // Draw player (always)
   drawPlayer();
-
-  // NPC (only when visible)
   drawNPC();
-
-  // Button (always visible)
   drawButton();
 
   requestAnimationFrame(gameLoop);
 }
 gameLoop();
 
-/* ========= Confetti (outer frame) ========= */
+/* ========= Confetti ========= */
 const confetti = document.getElementById('confetti');
 const cctx = confetti.getContext('2d');
 function sizeConfetti() {
@@ -387,8 +323,3 @@ function drawConfetti() {
 }
 drawConfetti();
 </script>
-</body>
-</html>
-
-
-
