@@ -8,14 +8,14 @@
   :root { --card-w: 1200px; --card-h: 600px; }
   * { box-sizing: border-box; }
   body {
-    background: #ffffff;            /* outer frame white */
+    background: #ffffff; 
     margin: 0;
     font-family: 'Pacifico', cursive;
     display: flex;
     align-items: center;
     flex-direction: column;
     min-height: 100vh;
-    overflow: hidden;               /* keep confetti tidy */
+    overflow: hidden; /* keep confetti tidy */
   }
   #birthdayText {
     font-size: 28px;
@@ -28,16 +28,14 @@
     margin-top: 10px;
     z-index: 2;
   }
-  /* Confetti canvas behind everything */
   #confetti {
     position: fixed;
     inset: 0;
     z-index: 0;
     pointer-events: none;
   }
-  /* Game canvas on top */
   #gameCanvas {
-    background: #ffffff;            /* inner frame white */
+    background: #ffffff; 
     margin-top: 20px;
     border-radius: 20px;
     box-shadow: 0 5px 15px rgba(0,0,0,0.3);
@@ -54,10 +52,11 @@
 <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
 <script>
-/* ========= Base setup ========= */
+/* ========= Setup ========= */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
+/* Cycle text */
 const texts = [
   "Happy 46th Birthday Daddy",
   "Happy 46th Birthday Jace",
@@ -70,66 +69,33 @@ document.getElementById('birthdayText').addEventListener('click', () => {
   document.getElementById('birthdayText').innerText = texts[textIndex];
 });
 
-/* ========= Countdown to Aug 13 ========= */
+/* Countdown target */
 function getNextCountdown() {
   const now = new Date();
-  let target = new Date(now.getFullYear(), 7, 13); // Aug is month 7 (0-based)
+  let target = new Date(now.getFullYear(), 7, 13); // August = month 7
   if (now > target) target.setFullYear(now.getFullYear() + 1);
   return target;
 }
 let targetDate = getNextCountdown();
 
-/* ========= Input ========= */
+/* Keys */
 const keys = {};
-document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
-document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
+document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+document.addEventListener('keyup',   e => keys[e.key.toLowerCase()] = false);
 
-/* ========= Images ========= */
-const playerRightFrames = [new Image(), new Image()];
-playerRightFrames[0].src = 'right 1.png';
-playerRightFrames[1].src = 'right 2.png';
-
-const playerLeftFrames = [new Image(), new Image()];
-playerLeftFrames[0].src = 'left 1.png';
-playerLeftFrames[1].src = 'left 2.png';
-
+/* Images */
 const cakeFrames = [new Image(), new Image()];
 cakeFrames[0].src = 'cake normal.png';
 cakeFrames[1].src = 'cake eaten.png';
+const specialImage = new Image();
+specialImage.src = 'pixil-frame-0 (1).png';
 
-const buttonImage = new Image(); buttonImage.src = 'button.png';
-const characterImage = new Image(); characterImage.src = 'mom.png';
-const planeImage = new Image(); planeImage.src = 'plane.png';
-const backgroundImage = new Image(); backgroundImage.src = 'paris.png';
-const specialImage = new Image(); specialImage.src = 'pixil-frame-0 (1).png';
+/* Game state */
+let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
+let eatCount = 0;
+let showSpecial = false;
 
-let imagesToLoad = 6;
-[
-  playerRightFrames[0], playerRightFrames[1],
-  playerLeftFrames[0],  playerLeftFrames[1],
-  cakeFrames[0],        cakeFrames[1]
-].forEach(img => img.onload = () => imagesToLoad--);
-
-/* ========= Game state ========= */
-let player = { x: 400, y: 400, width: 200, height: 250, dir: 'right', frame: 0, frameTick: 0, jumping: false, vy: 0 };
-let cake =   { x: 800, y: 430, width: 200, height: 250, frame: 0 };
-
-const playerSpeed = 10;
-
-let gameRunning   = true;
-let eatCount      = 0;
-let showSpecial   = false;
-let showCharacter = false;
-let interactionText = "";
-let riding        = false;
-let planeActive   = false;
-
-let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
-
-/* Persist the eaten frame (no flicker back) */
-let cakeEaten = false;
-
-/* ========= Helpers ========= */
+/* Draw helpers */
 function drawRoundedRect(x, y, w, h, r, fillStyle) {
   ctx.fillStyle = fillStyle;
   ctx.beginPath();
@@ -146,236 +112,78 @@ function drawRoundedRect(x, y, w, h, r, fillStyle) {
   ctx.fill();
 }
 
-function drawPlayer() {
-  const pf = player.dir === 'right' ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
-  if (pf.complete) ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-  else {
-    ctx.fillStyle = 'red';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-  }
-}
-
-function drawCake() {
-  const cf = cakeFrames[cake.frame];
-  if (cf.complete) ctx.drawImage(cf, cake.x, cake.y, cake.width, cake.height);
-  else {
-    ctx.fillStyle = 'pink';
-    ctx.fillRect(cake.x, cake.y, cake.width, cake.height);
-  }
-  ctx.fillStyle = 'black';
-  ctx.font = '24px Pacifico';
-  ctx.fillText('Infinitely generative cake', cake.x + 20, cake.y - 20);
-  ctx.fillText('(Press A to eat)', cake.x + 20, cake.y + 15);
-}
-
-function drawFireworks() {
-  for (let i = 0; i < 20; i++) {
-    ctx.fillStyle = `hsl(${Math.random() * 360},100%,50%)`;
-    let x = Math.random() * canvas.width;
-    let y = Math.random() * canvas.height;
-    ctx.beginPath();
-    ctx.arc(x, y, 2 + Math.random() * 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-/* Button with same rounded frame, but make the INSIDE image bigger */
-function drawButton() {
-  // Frame
-  ctx.save();
-  ctx.beginPath();
-  const r = 15;
-  ctx.moveTo(buttonX + r, buttonY);
-  ctx.lineTo(buttonX + buttonW - r, buttonY);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-  ctx.lineTo(buttonX + r, buttonY + buttonH);
-  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-  ctx.lineTo(buttonX, buttonY + r);
-  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-  ctx.closePath();
-  ctx.clip();
-
-  // Draw the button image slightly larger to fill the frame better
-  const overdraw = 10; // how much bigger than frame
-  if (buttonImage.complete) {
-    ctx.drawImage(buttonImage, buttonX - overdraw, buttonY - overdraw, buttonW + overdraw * 2, buttonH + overdraw * 2);
-  } else {
-    ctx.fillStyle = 'lightblue';
-    ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
-  }
-  ctx.restore();
-
-  // Outline
-  ctx.strokeStyle = 'black';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(buttonX + r, buttonY);
-  ctx.lineTo(buttonX + buttonW - r, buttonY);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-  ctx.lineTo(buttonX + r, buttonY + buttonH);
-  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-  ctx.lineTo(buttonX, buttonY + r);
-  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-  ctx.closePath();
-  ctx.stroke();
-}
-
-/* ========= Mouse for button ========= */
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
-    showCharacter = true;
-    planeActive   = true;
-    interactionText = 'Press B to ride';
-  }
-});
-
-/* ========= Keyboard actions ========= */
-document.addEventListener('keydown', (e) => {
-  // Eat cake (persistent frame)
-  if (e.key.toLowerCase() === 'a' && gameRunning) {
-    eatCount++;
-    cakeEaten = true;
-    cake.frame = 1; // keep it!
-    if (eatCount >= 15) {
-      showSpecial = true;
-      gameRunning = false; // stop game when special shows
-    }
-  }
-  // Ride plane
-  if (showCharacter && e.code === 'KeyB') {
-    riding = true;
-  }
-});
-
-/* ========= Game loop ========= */
-function gameLoop() {
-  if (imagesToLoad > 0) { requestAnimationFrame(gameLoop); return; }
-
-  // Clear to white (inner frame)
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-  // Background only when riding
-  if (riding && backgroundImage.complete) {
-    ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
-  }
-
-  // Countdown text (DOM)
+/* Countdown bar (blue-green fill) */
+function drawCountdownBar() {
   const now = new Date();
   if (now >= targetDate) targetDate = getNextCountdown();
   const diff = targetDate - now;
-  const days = Math.floor(diff / (1000*60*60*24));
-  const hours = Math.floor((diff / (1000*60*60)) % 24);
-  const minutes = Math.floor((diff / (1000*60)) % 60);
-  const seconds = Math.floor((diff / 1000) % 60);
-  document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+  const total = targetDate - new Date(now.getFullYear(), 7, 13 - 1); // from last Aug 13
+  const ratio = Math.max(0, diff / total);
 
-  // Rounded countdown bar
   const barX = 200, barY = 50, barW = 800, barH = 30, radius = 15;
-  drawRoundedRect(barX, barY, barW, barH, radius, 'black');
-  // inner white
-  drawRoundedRect(barX + 2, barY + 2, barW - 4, barH - 4, radius - 2, 'white');
-  // fill amount (example: fill when planeActive)
-  if (planeActive) {
-    const percent = 0.65; // demo; use any dynamic logic you want
-    // clip to inner rounded shape to keep rounded ends
-    ctx.save();
-    const innerR = radius - 2;
-    ctx.beginPath();
-    ctx.moveTo(barX + 2 + innerR, barY + 2);
-    ctx.lineTo(barX + barW - 2 - innerR, barY + 2);
-    ctx.quadraticCurveTo(barX + barW - 2, barY + 2, barX + barW - 2, barY + 2 + innerR);
-    ctx.lineTo(barX + barW - 2, barY + barH - 2 - innerR);
-    ctx.quadraticCurveTo(barX + barW - 2, barY + barH - 2, barX + barW - 2 - innerR, barY + barH - 2);
-    ctx.lineTo(barX + 2 + innerR, barY + barH - 2);
-    ctx.quadraticCurveTo(barX + 2, barY + barH - 2, barX + 2, barY + barH - 2 - innerR);
-    ctx.lineTo(barX + 2, barY + 2 + innerR);
-    ctx.quadraticCurveTo(barX + 2, barY + 2, barX + 2 + innerR, barY + 2);
-    ctx.closePath();
-    ctx.clip();
+  drawRoundedRect(barX, barY, barW, barH, radius, '#ccc'); // background
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(barX + radius, barY);
+  ctx.lineTo(barX + barW - radius, barY);
+  ctx.quadraticCurveTo(barX + barW, barY, barX + barW, barY + radius);
+  ctx.lineTo(barX + barW, barY + barH - radius);
+  ctx.quadraticCurveTo(barX + barW, barY + barH, barX + barW - radius, barY + barH);
+  ctx.lineTo(barX + radius, barY + barH);
+  ctx.quadraticCurveTo(barX, barY + barH, barX, barY + barH - radius);
+  ctx.lineTo(barX, barY + radius);
+  ctx.quadraticCurveTo(barX, barY, barX + radius, barY);
+  ctx.closePath();
+  ctx.clip();
 
-    ctx.fillStyle = '#ff6666';
-    ctx.fillRect(barX + 2, barY + 2, (barW - 4) * percent, barH - 4);
-    ctx.restore();
+  ctx.fillStyle = '#20c997'; // blue-green
+  ctx.fillRect(barX, barY, barW * (1 - ratio), barH);
+  ctx.restore();
+
+  ctx.fillStyle = 'black';
+  ctx.font = '20px Pacifico';
+  const days = Math.floor(diff / (1000*60*60*24));
+  ctx.fillText(`${days} days until Aug 13`, barX + 280, barY + 55);
+}
+
+/* Draw cake */
+function drawCake() {
+  const cf = cakeFrames[cake.frame];
+  if (cf.complete) ctx.drawImage(cf, cake.x, cake.y, cake.width, cake.height);
+  else { ctx.fillStyle = 'pink'; ctx.fillRect(cake.x, cake.y, cake.width, cake.height); }
+  ctx.fillStyle = 'black';
+  ctx.font = '24px Pacifico';
+  ctx.fillText('(Press A to eat)', cake.x + 20, cake.y + 15);
+}
+
+/* Key actions */
+document.addEventListener('keydown', e => {
+  if (e.key.toLowerCase() === 'a') {
+    eatCount++;
+    cake.frame = 1; // eaten
+    setTimeout(() => cake.frame = 0, 500); // back after 0.5s
+    if (eatCount >= 15) showSpecial = true;
   }
+});
 
-  // Movement (only while running & not special)
-  if (gameRunning && !showSpecial) {
-    if (keys['arrowleft']) {
-      player.x -= playerSpeed;
-      player.dir = 'left';
-      player.frameTick++;
-    } else if (keys['arrowright']) {
-      player.x += playerSpeed;
-      player.dir = 'right';
-      player.frameTick++;
-    } else {
-      player.frame = 0;
-      player.frameTick = 0;
-    }
-    if (player.frameTick > 10) {
-      player.frame = (player.frame + 1) % 2;
-      player.frameTick = 0;
-    }
+/* Game loop */
+function gameLoop() {
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // Jump
-    if (keys['arrowup'] && !player.jumping) {
-      player.jumping = true;
-      player.vy = -15;
-    }
-    if (player.jumping) {
-      player.y += player.vy;
-      player.vy += 1;
-      if (player.y >= 400) {
-        player.y = 400;
-        player.jumping = false;
-        player.vy = 0;
-      }
-    }
-  }
+  drawCountdownBar();
 
-  // Fireworks while riding
-  if (riding) drawFireworks();
-
-  // Draw objects (only if not in special overlay)
-  if (!showSpecial) {
-    drawCake();
-    drawPlayer();
-    drawButton();
-
-    // Character + interaction
-    if (showCharacter && planeActive) {
-      if (planeImage.complete) ctx.drawImage(planeImage, 300, 250, 100, 100);
-      ctx.fillStyle = 'black';
-      ctx.font = '20px Pacifico';
-      ctx.fillText(interactionText, 200, 180);
-    }
-  }
-
-  // Special overlay stops the game
   if (showSpecial && specialImage.complete) {
-    ctx.save();
-    ctx.globalAlpha = 0.95;
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = 1;
     ctx.drawImage(specialImage, 100, -130, 1000, 1000);
-    ctx.restore();
+  } else {
+    drawCake();
   }
 
   requestAnimationFrame(gameLoop);
 }
-
 gameLoop();
 
-/* ========= Confetti (outer frame) ========= */
+/* Confetti background */
 const confetti = document.getElementById('confetti');
 const cctx = confetti.getContext('2d');
 function sizeConfetti() {
@@ -384,16 +192,14 @@ function sizeConfetti() {
 }
 sizeConfetti();
 window.addEventListener('resize', sizeConfetti);
-
-const pieces = Array.from({ length: 160 }).map(() => ({
+const pieces = Array.from({ length: 150 }).map(() => ({
   x: Math.random() * confetti.width,
   y: Math.random() * confetti.height,
   s: Math.random() * 6 + 4,
-  v: Math.random() * 1.5 + 0.5,
-  c: `hsl(${Math.random() * 360}, 100%, 50%)`,
+  v: Math.random() * 2 + 1,
+  c: `hsl(${Math.random()*360}, 100%, 50%)`,
   r: Math.random() * Math.PI
 }));
-
 function drawConfetti() {
   cctx.clearRect(0, 0, confetti.width, confetti.height);
   pieces.forEach(p => {
@@ -401,12 +207,11 @@ function drawConfetti() {
     cctx.translate(p.x, p.y);
     cctx.rotate(p.r);
     cctx.fillStyle = p.c;
-    cctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s);
+    cctx.fillRect(-p.s/2, -p.s/2, p.s, p.s);
     cctx.restore();
-
-    p.y += p.v * 2;
+    p.y += p.v;
     p.r += 0.02;
-    if (p.y > confetti.height + 20) {
+    if (p.y > confetti.height+20) {
       p.y = -20;
       p.x = Math.random() * confetti.width;
     }
@@ -414,13 +219,7 @@ function drawConfetti() {
   requestAnimationFrame(drawConfetti);
 }
 drawConfetti();
-
-/* ========= Fix: keep cake on eaten frame ========= */
-(function persistCakeFrame() {
-  // If we've eaten at least once, ensure frame stays 1
-  const keep = () => { if (cakeEaten) cake.frame = 1; requestAnimationFrame(keep); };
-  keep();
-})();
 </script>
 </body>
 </html>
+
