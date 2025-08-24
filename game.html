@@ -177,7 +177,7 @@ document.addEventListener("keydown", e=>{
 });
 
 
---- Game loop ---
+//--- Game loop ---
 function gameLoop(){
     if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
 
@@ -216,16 +216,28 @@ function gameLoop(){
     ctx.closePath();
     ctx.fill();
 
-    // Inner white bar
-    ctx.fillStyle="white";
-    ctx.fillRect(barX+2, barY+2, barW-4, barH-4);
+  // Inner white bar (rounded)
+ctx.fillStyle="white";
+ctx.beginPath();
+ctx.moveTo(barX+radius, barY+2);
+ctx.lineTo(barX+barW-radius, barY+2);
+ctx.quadraticCurveTo(barX+barW-2, barY+2, barX+barW-2, barY+radius);
+ctx.lineTo(barX+barW-2, barY+barH-radius);
+ctx.quadraticCurveTo(barX+barW-2, barY+barH-2, barX+barW-radius, barY+barH-2);
+ctx.lineTo(barX+radius, barY+barH-2);
+ctx.quadraticCurveTo(barX+2, barY+barH-2, barX+2, barY+barH-radius);
+ctx.lineTo(barX+2, barY+radius);
+ctx.quadraticCurveTo(barX+2, barY+2, barX+radius, barY+2);
+ctx.closePath();
+ctx.fill();
 
-    // Fill if planeActive
-    if(planeActive){
-        const percent = 0.5; // just an example value
-        ctx.fillStyle="#ff6666";
-        ctx.fillRect(barX+2, barY+2, (barW-4)*percent, barH-4);
-    }
+// Fill if planeActive
+if(planeActive){
+    const percent = 0.5; // just an example value
+    ctx.fillStyle="#ff6666";
+    ctx.fillRect(barX+2, barY+2, (barW-4)*percent, barH-4);
+}
+
 
     // Player movement
     if(gameRunning){
@@ -271,6 +283,7 @@ function gameLoop(){
 }
 
 gameLoop();
+
 
 
 
