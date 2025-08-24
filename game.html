@@ -180,5 +180,100 @@ document.addEventListener("keydown", e=>{
 function gameLoop(){
     if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
 
+    // Clear canvas white first// --- Game loop ---
+function gameLoop(){
+    if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
+
     // Clear canvas white first
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw background only when riding
+    if(riding && backgroundImage.complete){
+        ctx.drawImage(backgroundImage, 0, 0, canvas.width, canvas.height);
+    }
+
+    // Countdown
+    const now = new Date();
+    if(now >= targetDate) targetDate = getNextCountdown();
+    let diff = targetDate - now;
+    const days = Math.floor(diff/(1000*60*60*24));
+    const hours = Math.floor((diff/(1000*60*60))%24);
+    const minutes = Math.floor((diff/(1000*60))%60);
+    const seconds = Math.floor((diff/1000)%60);
+    document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
+
+    // --- Countdown bar ---
+    let barX=200, barY=50, barW=800, barH=30, radius=15;
+    ctx.fillStyle="black";
+    ctx.beginPath();
+    ctx.moveTo(barX+radius, barY);
+    ctx.lineTo(barX+barW-radius, barY);
+    ctx.quadraticCurveTo(barX+barW, barY, barX+barW, barY+radius);
+    ctx.lineTo(barX+barW, barY+barH-radius);
+    ctx.quadraticCurveTo(barX+barW, barY+barH, barX+barW-radius, barY+barH);
+    ctx.lineTo(barX+radius, barY+barH);
+    ctx.quadraticCurveTo(barX, barY+barH, barX, barY+barH-radius);
+    ctx.lineTo(barX, barY+radius);
+    ctx.quadraticCurveTo(barX, barY, barX+radius, barY);
+    ctx.closePath();
+    ctx.fill();
+
+    // Inner white bar
+    ctx.fillStyle="white";
+    ctx.fillRect(barX+2, barY+2, barW-4, barH-4);
+
+    // Fill if planeActive
+    if(planeActive){
+        const percent = 0.5; // just an example value
+        ctx.fillStyle="#ff6666";
+        ctx.fillRect(barX+2, barY+2, (barW-4)*percent, barH-4);
+    }
+
+    // Player movement
+    if(gameRunning){
+        if(keys['arrowleft']){ player.x -= playerSpeed; player.dir="left"; player.frameTick++; }
+        else if(keys['arrowright']){ player.x += playerSpeed; player.dir="right"; player.frameTick++; }
+        else { player.frame=0; player.frameTick=0; }
+        if(player.frameTick>10){ player.frame=(player.frame+1)%2; player.frameTick=0; }
+
+        // Jump
+        if(keys['arrowup'] && !player.jumping){ player.jumping=true; player.vy=-15; }
+        if(player.jumping){
+            player.y += player.vy;
+            player.vy += 1;
+            if(player.y >= 400){
+                player.y = 400;
+                player.jumping = false;
+                player.vy = 0;
+            }
+        }
+    }
+
+    // Riding fireworks
+    if(riding) drawFireworks();
+
+    // Draw objects
+    drawCake();
+    drawPlayer();
+    drawButton();
+
+    // Character + interaction
+    if(showCharacter && planeActive){
+        if(planeImage.complete) ctx.drawImage(planeImage,300,250,100,100);
+        ctx.fillStyle="black"; ctx.font="20px Pacifico";
+        ctx.fillText(interactionText,200,180);
+    }
+
+    // Special mode
+    if(showSpecial && specialImage.complete){
+        ctx.drawImage(specialImage,100,-130,1000,1000);
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
+gameLoop();
+
+
 
