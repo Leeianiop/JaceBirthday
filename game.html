@@ -3,12 +3,13 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-/* Cycle text (kept as-is) */
+/* Cycle text (added apology here ❤️) */
 const texts = [
   "Happy 46th Birthday Daddy",
   "Happy 46th Birthday Jace",
   "Happy 46th Birthday Lee",
-  "Hapi Bday Mah N-"
+  "Hapi Bday Mah N-",
+
 ];
 let textIndex = 0;
 document.getElementById('birthdayText').addEventListener('click', () => {
@@ -19,10 +20,10 @@ document.getElementById('birthdayText').addEventListener('click', () => {
 /* ========= Countdown ========= */
 function getTargetDates() {
   const now = new Date();
-  let eventDay = new Date(now.getFullYear(), 7, 18); // Aug 18 (0-based month)
-  let nextBirthday = new Date(now.getFullYear() + 1, 7, 18);
+  const eventDay = new Date(now.getFullYear(), 7, 18); // Aug 18
+  const nextBirthday = new Date(now.getFullYear() + 1, 7, 18);
   if (now < eventDay) return { phase: "event", target: eventDay, next: nextBirthday };
-  else return { phase: "birthday", target: nextBirthday, next: new Date(now.getFullYear() + 2, 7, 18) };
+  return { phase: "birthday", target: nextBirthday, next: new Date(now.getFullYear() + 2, 7, 18) };
 }
 let countdownState = getTargetDates();
 
@@ -32,150 +33,94 @@ document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
 /* ========= Images ========= */
-const playerRightFrames = [new Image(), new Image()];
-playerRightFrames[0].src = 'right 1.png';
-playerRightFrames[1].src = 'right 2.png';
-
-const playerLeftFrames = [new Image(), new Image()];
-playerLeftFrames[0].src = 'left 1.png';
-playerLeftFrames[1].src = 'left 2.png';
-
-const cakeFrames = [new Image(), new Image()];
-cakeFrames[0].src = 'cake normal.png';
-cakeFrames[1].src = 'cake eaten.png';
-
-const buttonImage = new Image(); buttonImage.src = 'button.png';
-const npcImage    = new Image(); npcImage.src    = 'mom.png';   // mom.png is the NPC
-const planeImage  = new Image(); planeImage.src  = 'plane.png';
-const specialImage = new Image(); specialImage.src = 'pixil-frame-0 (1).png'; // your special image
+function loadImage(src) {
+  const img = new Image();
+  img.src = src;
+  return img;
+}
+const playerRightFrames = [loadImage('right 1.png'), loadImage('right 2.png')];
+const playerLeftFrames  = [loadImage('left 1.png'),  loadImage('left 2.png')];
+const cakeFrames        = [loadImage('cake normal.png'), loadImage('cake eaten.png')];
+const buttonImage       = loadImage('button.png');
+const npcImage          = loadImage('mom.png');
+const planeImage        = loadImage('plane.png');
+const specialImage      = loadImage('pixil-frame-0 (1).png');
 
 /* ========= Game state ========= */
 let player = {
   x: 400, y: 400, width: 200, height: 250,
   dir: 'right', frame: 0, frameTick: 0, jumping: false, vy: 0
 };
-
 let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
+const groundY = 400;
 
-let planeActive   = false;  
-let npcVisible    = false;  
-let npcSaidHi     = false;  
-let typedBuffer   = "";     
+let planeActive   = false;
+let npcVisible    = false;
+let npcSaidHi     = false;
+let typedBuffer   = "";
 
 let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
-
-/* New special trigger */
 let aPressCount = 0;
 let specialActive = false;
 
 /* ========= Helpers ========= */
 function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
 
-function drawRoundedRect(x, y, w, h, r, fillStyle) {
-  ctx.fillStyle = fillStyle;
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  ctx.fill();
+function safeDraw(img, x, y, w, h, color) {
+  if (img && img.complete && img.naturalWidth > 0) {
+    ctx.drawImage(img, x, y, w, h);
+  } else {
+    ctx.fillStyle = color;
+    ctx.fillRect(x, y, w, h);
+  }
 }
 
 function drawPlayer() {
-  const pf = player.dir === 'right' ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
-  if (pf.complete) {
-    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-  } else {
-    ctx.fillStyle = 'red';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-  }
+  const frame = player.dir === 'right' ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+  safeDraw(frame, player.x, player.y, player.width, player.height, 'red');
 }
 
 function drawCake() {
-  const cf = cakeFrames[cake.frame];
-  if (cf.complete) {
-    ctx.drawImage(cf, cake.x, cake.y, cake.width, cake.height);
-  } else {
-    ctx.fillStyle = 'pink';
-    ctx.fillRect(cake.x, cake.y, cake.width, cake.height);
-  }
+  safeDraw(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height, 'pink');
   ctx.fillStyle = 'black';
   ctx.font = '24px Pacifico';
   ctx.fillText('(Press A to eat)', cake.x + 20, cake.y + 15);
 }
 
 function drawPlane() {
-  if (planeImage.complete) ctx.drawImage(planeImage, 650, 340, 350, 180);
-  else { ctx.fillStyle = 'gray'; ctx.fillRect(650, 340, 350, 180); }
+  safeDraw(planeImage, 650, 340, 350, 180, 'gray');
 }
 
-/* Special image */
 function drawSpecial() {
-  if (specialImage.complete) ctx.drawImage(specialImage, 400, 200, 400, 200);
-  else { ctx.fillStyle = 'purple'; ctx.fillRect(400, 200, 400, 200); }
+  safeDraw(specialImage, 400, 200, 400, 200, 'purple');
 }
 
-/* NPC bubble that says "Hi" */
 function drawNPC() {
   if (!npcVisible) return;
   const nx = 320, ny = 340, nw = 160, nh = 220;
-  if (npcImage.complete) ctx.drawImage(npcImage, nx, ny, nw, nh);
-  else { ctx.fillStyle = 'orange'; ctx.fillRect(nx, ny, nw, nh); }
-  const bx = nx + nw + 20, by = ny + 40, bw = 140, bh = 60, r = 12;
+  safeDraw(npcImage, nx, ny, nw, nh, 'orange');
   ctx.fillStyle = 'white';
-  drawRoundedRect(bx, by, bw, bh, r, 'white');
+  ctx.fillRect(nx + nw + 20, ny + 40, 140, 60);
   ctx.strokeStyle = 'black';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(bx, by, bw, bh);
+  ctx.strokeRect(nx + nw + 20, ny + 40, 140, 60);
   ctx.fillStyle = 'black';
   ctx.font = '26px Pacifico';
-  ctx.fillText('Hi', bx + 15, by + 38);
+  ctx.fillText('Hi', nx + nw + 35, ny + 78);
 }
 
 function drawButton() {
-  ctx.save();
-  ctx.beginPath();
-  const r = 15;
-  ctx.moveTo(buttonX + r, buttonY);
-  ctx.lineTo(buttonX + buttonW - r, buttonY);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-  ctx.lineTo(buttonX + r, buttonY + buttonH);
-  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-  ctx.lineTo(buttonX, buttonY + r);
-  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-  ctx.closePath();
-  ctx.clip();
-
-  const overdraw = 10;
-  if (buttonImage.complete) {
-    ctx.drawImage(buttonImage, buttonX - overdraw, buttonY - overdraw, buttonW + overdraw*2, buttonH + overdraw*2);
-  } else {
-    ctx.fillStyle = 'lightblue';
-    ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
-  }
-  ctx.restore();
-
+  safeDraw(buttonImage, buttonX, buttonY, buttonW, buttonH, 'lightblue');
   ctx.strokeStyle = 'black';
-  ctx.lineWidth = 2;
-  ctx.stroke();
+  ctx.strokeRect(buttonX, buttonY, buttonW, buttonH);
 }
 
-/* ========= Mouse: clicking the button ========= */
+/* ========= Mouse click ========= */
 canvas.addEventListener('click', (e) => {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
-
   if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
     planeActive = true;
     npcVisible  = true;
@@ -183,7 +128,7 @@ canvas.addEventListener('click', (e) => {
   }
 });
 
-/* ========= Keyboard actions ========= */
+/* ========= Keyboard ========= */
 document.addEventListener('keydown', (e) => {
   const k = e.key.toLowerCase();
 
@@ -192,9 +137,7 @@ document.addEventListener('keydown', (e) => {
     setTimeout(() => { cake.frame = 0; }, 500);
 
     aPressCount++;
-    if (aPressCount >= 15) {
-      specialActive = true;
-    }
+    if (aPressCount >= 15) specialActive = true;
   }
 
   if (k === 'arrowup' && !player.jumping) {
@@ -203,23 +146,20 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-/* Typing "hi" back to NPC */
+/* Typing "hi" back */
 document.addEventListener('keypress', (e) => {
   if (!npcVisible) return;
-  const ch = e.key;
-  if (ch.length === 1) {
-    typedBuffer += ch;
-    if (typedBuffer.length > 10) typedBuffer = typedBuffer.slice(-10);
-    if (typedBuffer.toLowerCase().endsWith('hi')) {
-      npcVisible = false;
-      typedBuffer = '';
-    }
+  typedBuffer += e.key;
+  if (typedBuffer.length > 10) typedBuffer = typedBuffer.slice(-10);
+  if (typedBuffer.toLowerCase().endsWith('hi')) {
+    npcVisible = false;
+    typedBuffer = '';
   }
 });
 
 /* ========= Game loop ========= */
 function gameLoop() {
-  ctx.fillStyle = '#ffffff';
+  ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const now = new Date();
@@ -234,17 +174,9 @@ function gameLoop() {
   document.getElementById('countdown').innerText =
     `${days}d ${hours}h ${minutes}m ${seconds}s (${countdownState.phase})`;
 
-  const barX = 200, barY = 50, barW = 800, barH = 30, radius = 15;
-  drawRoundedRect(barX, barY, barW, barH, radius, 'black');
-  drawRoundedRect(barX + 2, barY + 2, barW - 4, barH - 4, radius - 2, 'white');
-
-  if (specialActive) {
-    drawSpecial();
-  } else if (planeActive) {
-    drawPlane();
-  } else {
-    drawCake();
-  }
+  if (specialActive) drawSpecial();
+  else if (planeActive) drawPlane();
+  else drawCake();
 
   if (keys['arrowleft']) {
     player.x -= playerSpeed;
@@ -266,8 +198,8 @@ function gameLoop() {
   if (player.jumping) {
     player.y += player.vy;
     player.vy += 1;
-    if (player.y >= 400) {
-      player.y = 400;
+    if (player.y >= groundY) {
+      player.y = groundY;
       player.jumping = false;
       player.vy = 0;
     }
@@ -323,4 +255,6 @@ function drawConfetti() {
 }
 drawConfetti();
 </script>
+
+
 
