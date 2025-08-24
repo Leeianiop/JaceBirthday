@@ -176,8 +176,7 @@ document.addEventListener("keydown", e=>{
     if(showCharacter && e.code==="KeyB"){ riding=true; }
 });
 
-
-//--- Game loop ---
+// --- Game loop ---
 function gameLoop(){
     if(imagesToLoad>0){ requestAnimationFrame(gameLoop); return; }
 
@@ -200,7 +199,7 @@ function gameLoop(){
     const seconds = Math.floor((diff/1000)%60);
     document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-    // --- Countdown bar ---
+    // --- Countdown bar (outer black rounded) ---
     let barX=200, barY=50, barW=800, barH=30, radius=15;
     ctx.fillStyle="black";
     ctx.beginPath();
@@ -216,28 +215,27 @@ function gameLoop(){
     ctx.closePath();
     ctx.fill();
 
-  // Inner white bar (rounded)
-ctx.fillStyle="white";
-ctx.beginPath();
-ctx.moveTo(barX+radius, barY+2);
-ctx.lineTo(barX+barW-radius, barY+2);
-ctx.quadraticCurveTo(barX+barW-2, barY+2, barX+barW-2, barY+radius);
-ctx.lineTo(barX+barW-2, barY+barH-radius);
-ctx.quadraticCurveTo(barX+barW-2, barY+barH-2, barX+barW-radius, barY+barH-2);
-ctx.lineTo(barX+radius, barY+barH-2);
-ctx.quadraticCurveTo(barX+2, barY+barH-2, barX+2, barY+barH-radius);
-ctx.lineTo(barX+2, barY+radius);
-ctx.quadraticCurveTo(barX+2, barY+2, barX+radius, barY+2);
-ctx.closePath();
-ctx.fill();
+    // --- Inner white rounded ---
+    ctx.fillStyle="white";
+    ctx.beginPath();
+    ctx.moveTo(barX+radius, barY+2);
+    ctx.lineTo(barX+barW-radius, barY+2);
+    ctx.quadraticCurveTo(barX+barW-2, barY+2, barX+barW-2, barY+radius);
+    ctx.lineTo(barX+barW-2, barY+barH-radius);
+    ctx.quadraticCurveTo(barX+barW-2, barY+barH-2, barX+barW-radius, barY+barH-2);
+    ctx.lineTo(barX+radius, barY+barH-2);
+    ctx.quadraticCurveTo(barX+2, barY+barH-2, barX+2, barY+barH-radius);
+    ctx.lineTo(barX+2, barY+radius);
+    ctx.quadraticCurveTo(barX+2, barY+2, barX+radius, barY+2);
+    ctx.closePath();
+    ctx.fill();
 
-// Fill if planeActive
-if(planeActive){
-    const percent = 0.5; // just an example value
-    ctx.fillStyle="#ff6666";
-    ctx.fillRect(barX+2, barY+2, (barW-4)*percent, barH-4);
-}
-
+    // Fill if planeActive
+    if(planeActive){
+        const percent = 0.5; // placeholder
+        ctx.fillStyle="#ff6666";
+        ctx.fillRect(barX+2, barY+2, (barW-4)*percent, barH-4);
+    }
 
     // Player movement
     if(gameRunning){
@@ -283,6 +281,11 @@ if(planeActive){
 }
 
 gameLoop();
+</script>
+</body>
+</html>
+
+
 
 
 
