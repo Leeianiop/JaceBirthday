@@ -1,55 +1,9 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8" />
-<title>Birthday Game</title>
-<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet" />
-<style>
-  body {
-    background: #ffffff; 
-    margin: 0;
-    font-family: 'Pacifico', cursive;
-    display: flex;
-    align-items: center;
-    flex-direction: column;
-    min-height: 100vh;
-    overflow: hidden;
-  }
-  #birthdayText {
-    font-size: 28px;
-    cursor: pointer;
-    margin-top: 20px;
-    z-index: 2;
-  }
-  #countdown { font-size: 22px; margin-top: 10px; z-index: 2; }
-  #confetti {
-    position: fixed;
-    inset: 0;
-    z-index: 0;
-    pointer-events: none;
-  }
-  #gameCanvas {
-    background: #ffffff; 
-    margin-top: 20px;
-    border-radius: 20px;
-    box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-    z-index: 1;
-  }
-</style>
-</head>
-<body>
-
-<canvas id="confetti"></canvas>
-<div id="birthdayText">Happy 46th Birthday Daddy</div>
-<div id="countdown"></div>
-<canvas id="gameCanvas" width="1200" height="600"></canvas>
-
 <script>
-/* ========= Setup ========= */
+/* ========= Base setup ========= */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-/* Text cycle */
+/* Cycle text (kept as-is) */
 const texts = [
   "Happy 46th Birthday Daddy",
   "Happy 46th Birthday Jace",
@@ -62,134 +16,275 @@ document.getElementById('birthdayText').addEventListener('click', () => {
   document.getElementById('birthdayText').innerText = texts[textIndex];
 });
 
-/* Countdown target */
-function getNextCountdown() {
+/* ========= Countdown ========= */
+function getTargetDates() {
   const now = new Date();
-  let target = new Date(now.getFullYear(), 7, 13);
-  if (now > target) target.setFullYear(now.getFullYear() + 1);
-  return target;
+  let eventDay = new Date(now.getFullYear(), 7, 18); // Aug 18 (0-based month)
+  let nextBirthday = new Date(now.getFullYear() + 1, 7, 18);
+  if (now < eventDay) return { phase: "event", target: eventDay, next: nextBirthday };
+  else return { phase: "birthday", target: nextBirthday, next: new Date(now.getFullYear() + 2, 7, 18) };
 }
-let targetDate = getNextCountdown();
+let countdownState = getTargetDates();
 
-/* Keys */
+/* ========= Input ========= */
 const keys = {};
-document.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-document.addEventListener('keyup',   e => keys[e.key.toLowerCase()] = false);
+document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
+document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-/* Images */
+/* ========= Images ========= */
+const playerRightFrames = [new Image(), new Image()];
+playerRightFrames[0].src = 'right 1.png';
+playerRightFrames[1].src = 'right 2.png';
+
+const playerLeftFrames = [new Image(), new Image()];
+playerLeftFrames[0].src = 'left 1.png';
+playerLeftFrames[1].src = 'left 2.png';
+
 const cakeFrames = [new Image(), new Image()];
 cakeFrames[0].src = 'cake normal.png';
 cakeFrames[1].src = 'cake eaten.png';
-const planeImg = new Image();
-planeImg.src = 'plane.png';
-const playerFrames = [new Image(), new Image()];
-playerFrames[0].src = 'player1.png';
-playerFrames[1].src = 'player2.png';
-const momImg = new Image();
-momImg.src = 'mom.png';
 
-/* Game state */
-let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0, visible: true };
-let player = { x: 200, y: 420, w: 120, h: 150, frame: 0 };
-let npc = { x: 500, y: 400, w: 120, h: 150, visible: false };
-let showPlane = false;
-let dialogue = "";
-let interactionStage = 0;
+const buttonImage = new Image(); buttonImage.src = 'button.png';
+const npcImage    = new Image(); npcImage.src    = 'mom.png';   // mom.png is the NPC
+const planeImage  = new Image(); planeImage.src  = 'plane.png';
+const specialImage = new Image(); specialImage.src = 'special.png'; // your special image
 
-/* Countdown bar */
-function drawCountdownBar() {
-  const now = new Date();
-  if (now >= targetDate) targetDate = getNextCountdown();
-  const diff = targetDate - now;
-  const total = targetDate - new Date(now.getFullYear(), 7, 12);
-  const ratio = Math.max(0, diff / total);
+/* ========= Game state ========= */
+let player = {
+  x: 400, y: 400, width: 200, height: 250,
+  dir: 'right', frame: 0, frameTick: 0, jumping: false, vy: 0
+};
 
-  ctx.fillStyle = '#ccc';
-  ctx.fillRect(200, 50, 800, 30);
-  ctx.fillStyle = '#20c997';
-  ctx.fillRect(200, 50, 800 * (1 - ratio), 30);
+let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
 
-  ctx.fillStyle = 'black';
-  ctx.font = '20px Pacifico';
-  const days = Math.floor(diff / (1000*60*60*24));
-  ctx.fillText(`${days} days until Aug 13`, 450, 95);
+const playerSpeed = 10;
+
+let planeActive   = false;  
+let npcVisible    = false;  
+let npcSaidHi     = false;  
+let typedBuffer   = "";     
+
+let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
+
+/* New special trigger */
+let aPressCount = 0;
+let specialActive = false;
+
+/* ========= Helpers ========= */
+function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
+
+function drawRoundedRect(x, y, w, h, r, fillStyle) {
+  ctx.fillStyle = fillStyle;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + w - r, y);
+  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+  ctx.lineTo(x + r, y + h);
+  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+  ctx.lineTo(x, y + r);
+  ctx.quadraticCurveTo(x, y, x + r, y);
+  ctx.closePath();
+  ctx.fill();
 }
 
-/* Draw cake */
-function drawCake() {
-  if (!cake.visible) return;
-  const cf = cakeFrames[cake.frame];
-  if (cf.complete) ctx.drawImage(cf, cake.x, cake.y, cake.width, cake.height);
-  ctx.fillStyle = 'black';
-  ctx.font = '20px Pacifico';
-  ctx.fillText('(Press A to eat)', cake.x, cake.y - 10);
-}
-
-/* Draw player */
 function drawPlayer() {
-  const pf = playerFrames[player.frame];
-  if (pf.complete) ctx.drawImage(pf, player.x, player.y, player.w, player.h);
+  const pf = player.dir === 'right' ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+  if (pf.complete) {
+    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
+  } else {
+    ctx.fillStyle = 'red';
+    ctx.fillRect(player.x, player.y, player.width, player.height);
+  }
 }
 
-/* Draw NPC */
+function drawCake() {
+  const cf = cakeFrames[cake.frame];
+  if (cf.complete) {
+    ctx.drawImage(cf, cake.x, cake.y, cake.width, cake.height);
+  } else {
+    ctx.fillStyle = 'pink';
+    ctx.fillRect(cake.x, cake.y, cake.width, cake.height);
+  }
+  ctx.fillStyle = 'black';
+  ctx.font = '24px Pacifico';
+  ctx.fillText('(Press A to eat)', cake.x + 20, cake.y + 15);
+}
+
+function drawPlane() {
+  if (planeImage.complete) ctx.drawImage(planeImage, 650, 340, 350, 180);
+  else { ctx.fillStyle = 'gray'; ctx.fillRect(650, 340, 350, 180); }
+}
+
+/* Special image */
+function drawSpecial() {
+  if (specialImage.complete) ctx.drawImage(specialImage, 400, 200, 400, 200);
+  else { ctx.fillStyle = 'purple'; ctx.fillRect(400, 200, 400, 200); }
+}
+
+/* NPC bubble that says "Hi" */
 function drawNPC() {
-  if (!npc.visible) return;
-  if (momImg.complete) ctx.drawImage(momImg, npc.x, npc.y, npc.w, npc.h);
-
-  if (dialogue) {
-    ctx.fillStyle = 'white';
-    ctx.fillRect(npc.x - 30, npc.y - 60, 200, 40);
-    ctx.strokeRect(npc.x - 30, npc.y - 60, 200, 40);
-    ctx.fillStyle = 'black';
-    ctx.font = '18px Pacifico';
-    ctx.fillText(dialogue, npc.x - 20, npc.y - 35);
-  }
+  if (!npcVisible) return;
+  const nx = 320, ny = 340, nw = 160, nh = 220;
+  if (npcImage.complete) ctx.drawImage(npcImage, nx, ny, nw, nh);
+  else { ctx.fillStyle = 'orange'; ctx.fillRect(nx, ny, nw, nh); }
+  const bx = nx + nw + 20, by = ny + 40, bw = 140, bh = 60, r = 12;
+  ctx.fillStyle = 'white';
+  drawRoundedRect(bx, by, bw, bh, r, 'white');
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 2;
+  ctx.strokeRect(bx, by, bw, bh);
+  ctx.fillStyle = 'black';
+  ctx.font = '26px Pacifico';
+  ctx.fillText('Hi', bx + 15, by + 38);
 }
 
-/* Handle keys */
-document.addEventListener('keydown', e => {
-  if (e.key.toLowerCase() === 'a' && cake.visible) {
-    cake.frame = 1;
-    setTimeout(() => {
-      cake.frame = 0;
-      cake.visible = false;
-      npc.visible = true;
-      dialogue = "Hi!";
-      interactionStage = 1;
-    }, 500);
+function drawButton() {
+  ctx.save();
+  ctx.beginPath();
+  const r = 15;
+  ctx.moveTo(buttonX + r, buttonY);
+  ctx.lineTo(buttonX + buttonW - r, buttonY);
+  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
+  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
+  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
+  ctx.lineTo(buttonX + r, buttonY + buttonH);
+  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
+  ctx.lineTo(buttonX, buttonY + r);
+  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
+  ctx.closePath();
+  ctx.clip();
+
+  const overdraw = 10;
+  if (buttonImage.complete) {
+    ctx.drawImage(buttonImage, buttonX - overdraw, buttonY - overdraw, buttonW + overdraw*2, buttonH + overdraw*2);
+  } else {
+    ctx.fillStyle = 'lightblue';
+    ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
   }
-  if (e.key === " " && npc.visible) {
-    if (interactionStage === 1) {
-      dialogue = "Hi back!";
-      interactionStage = 2;
-      setTimeout(() => {
-        dialogue = "";
-        npc.visible = false;
-        showPlane = true;
-      }, 1000);
+  ctx.restore();
+
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+}
+
+/* ========= Mouse: clicking the button ========= */
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
+    planeActive = true;
+    npcVisible  = true;
+    npcSaidHi   = true;
+  }
+});
+
+/* ========= Keyboard actions ========= */
+document.addEventListener('keydown', (e) => {
+  const k = e.key.toLowerCase();
+
+  if (!planeActive && k === 'a') {
+    cake.frame = 1;
+    setTimeout(() => { cake.frame = 0; }, 500);
+
+    aPressCount++;
+    if (aPressCount >= 15) {
+      specialActive = true;
+    }
+  }
+
+  if (k === 'arrowup' && !player.jumping) {
+    player.jumping = true;
+    player.vy = -15;
+  }
+});
+
+/* Typing "hi" back to NPC */
+document.addEventListener('keypress', (e) => {
+  if (!npcVisible) return;
+  const ch = e.key;
+  if (ch.length === 1) {
+    typedBuffer += ch;
+    if (typedBuffer.length > 10) typedBuffer = typedBuffer.slice(-10);
+    if (typedBuffer.toLowerCase().endsWith('hi')) {
+      npcVisible = false;
+      typedBuffer = '';
     }
   }
 });
 
-/* Game loop */
+/* ========= Game loop ========= */
 function gameLoop() {
-  ctx.fillStyle = '#fff';
+  ctx.fillStyle = '#ffffff';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  drawCountdownBar();
-  drawPlayer();
-  drawCake();
-  drawNPC();
-
-  if (showPlane && planeImg.complete) {
-    ctx.drawImage(planeImg, 700, 200, 400, 300);
+  const now = new Date();
+  if (now >= countdownState.target) {
+    countdownState = { phase: "birthday", target: countdownState.next, next: new Date(countdownState.next.getFullYear() + 1, 7, 18) };
   }
+  const diff = countdownState.target - now;
+  const days = Math.floor(diff / (1000*60*60*24));
+  const hours = Math.floor((diff / (1000*60*60)) % 24);
+  const minutes = Math.floor((diff / (1000*60)) % 60);
+  const seconds = Math.floor((diff / 1000) % 60);
+  document.getElementById('countdown').innerText =
+    `${days}d ${hours}h ${minutes}m ${seconds}s (${countdownState.phase})`;
+
+  const barX = 200, barY = 50, barW = 800, barH = 30, radius = 15;
+  drawRoundedRect(barX, barY, barW, barH, radius, 'black');
+  drawRoundedRect(barX + 2, barY + 2, barW - 4, barH - 4, radius - 2, 'white');
+
+  if (specialActive) {
+    drawSpecial();
+  } else if (planeActive) {
+    drawPlane();
+  } else {
+    drawCake();
+  }
+
+  if (keys['arrowleft']) {
+    player.x -= playerSpeed;
+    player.dir = 'left';
+    player.frameTick++;
+  } else if (keys['arrowright']) {
+    player.x += playerSpeed;
+    player.dir = 'right';
+    player.frameTick++;
+  } else {
+    player.frame = 0;
+    player.frameTick = 0;
+  }
+  if (player.frameTick > 10) {
+    player.frame = (player.frame + 1) % 2;
+    player.frameTick = 0;
+  }
+
+  if (player.jumping) {
+    player.y += player.vy;
+    player.vy += 1;
+    if (player.y >= 400) {
+      player.y = 400;
+      player.jumping = false;
+      player.vy = 0;
+    }
+  }
+
+  player.x = clamp(player.x, 0, canvas.width - player.width);
+  player.y = clamp(player.y, 0, canvas.height - player.height);
+
+  drawPlayer();
+  drawNPC();
+  drawButton();
 
   requestAnimationFrame(gameLoop);
 }
 gameLoop();
 
-/* Confetti background */
+/* ========= Confetti ========= */
 const confetti = document.getElementById('confetti');
 const cctx = confetti.getContext('2d');
 function sizeConfetti() {
@@ -198,14 +293,16 @@ function sizeConfetti() {
 }
 sizeConfetti();
 window.addEventListener('resize', sizeConfetti);
-const pieces = Array.from({ length: 150 }).map(() => ({
+
+const pieces = Array.from({ length: 160 }).map(() => ({
   x: Math.random() * confetti.width,
   y: Math.random() * confetti.height,
   s: Math.random() * 6 + 4,
-  v: Math.random() * 2 + 1,
-  c: `hsl(${Math.random()*360}, 100%, 50%)`,
+  v: Math.random() * 1.5 + 0.5,
+  c: `hsl(${Math.random() * 360}, 100%, 50%)`,
   r: Math.random() * Math.PI
 }));
+
 function drawConfetti() {
   cctx.clearRect(0, 0, confetti.width, confetti.height);
   pieces.forEach(p => {
@@ -213,11 +310,11 @@ function drawConfetti() {
     cctx.translate(p.x, p.y);
     cctx.rotate(p.r);
     cctx.fillStyle = p.c;
-    cctx.fillRect(-p.s/2, -p.s/2, p.s, p.s);
+    cctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s);
     cctx.restore();
-    p.y += p.v;
+    p.y += p.v * 2;
     p.r += 0.02;
-    if (p.y > confetti.height+20) {
+    if (p.y > confetti.height + 20) {
       p.y = -20;
       p.x = Math.random() * confetti.width;
     }
@@ -226,8 +323,8 @@ function drawConfetti() {
 }
 drawConfetti();
 </script>
-</body>
-</html>
+
+
 
 
 
