@@ -133,38 +133,40 @@
     }
 
     /* ====== Confetti ====== */
-    let confetti = [];
-    function spawnConfetti(x,y){
-      for(let i=0;i<30;i++){
-        confetti.push({
-          x:x, y:y,
-          dx:(Math.random()-0.5)*6,
-          dy:(Math.random()-0.5)*6,
-          size:Math.random()*6+4,
-          color:`hsl(${Math.random()*360},100%,50%)`,
-          life:100
-        });
-      }
-    }
-    function updateConfetti(){
-      confettiCtx.clearRect(0,0,confettiCanvas.width,confettiCanvas.height);
-      confetti = confetti.filter(c=>c.life>0);
-      confetti.forEach(c=>{
-        c.x+=c.dx;
-        c.y+=c.dy;
-        c.dy+=0.1;
-        c.life--;
-        confettiCtx.fillStyle=c.color;
-        confettiCtx.fillRect(c.x,c.y,c.size,c.size);
-      });
-    }
-
-    document.addEventListener("click",(e)=>{
-      const rect = canvas.getBoundingClientRect();
-      if(e.clientX<rect.left || e.clientX>rect.right || e.clientY<rect.top || e.clientY>rect.bottom){
-        spawnConfetti(e.clientX,e.clientY);
-      }
+/* ====== Confetti ====== */
+let confetti = [];
+function spawnConfetti(x,y){
+  for(let i=0;i<30;i++){
+    confetti.push({
+      x:x, y:y,
+      dx:(Math.random()-0.5)*6,
+      dy:(Math.random()-0.5)*6,
+      size:Math.random()*6+4,
+      color:`hsl(${Math.random()*360},100%,50%)`,
+      life:100
     });
+  }
+}
+function updateConfetti(ctx){
+  confetti = confetti.filter(c=>c.life>0);
+  confetti.forEach(c=>{
+    c.x+=c.dx;
+    c.y+=c.dy;
+    c.dy+=0.1;
+    c.life--;
+    ctx.fillStyle=c.color;
+    ctx.fillRect(c.x,c.y,c.size,c.size);
+  });
+}
+
+document.addEventListener("click",(e)=>{
+  const rect = canvas.getBoundingClientRect();
+  if(e.clientX<rect.left || e.clientX>rect.right || e.clientY<rect.top || e.clientY>rect.bottom){
+    // spawn from cursor position relative to canvas
+    spawnConfetti(e.clientX - rect.left, e.clientY - rect.top);
+  }
+});
+
 
     /* ====== Game loop ====== */
     function gameLoop() {
@@ -239,7 +241,8 @@
       if (showImage) ctx.drawImage(specialImg, 100, 100, 200, 200);
 
       // Confetti
-      updateConfetti();
+      updateConfetti(ctx);
+
 
       requestAnimationFrame(gameLoop);
     }
@@ -247,6 +250,7 @@
   </script>
 </body>
 </html>
+
 
 
 
