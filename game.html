@@ -1,78 +1,67 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Birthday Countdown Game</title>
-  <style>
-    body {
-      background: #ffeedd;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      font-family: pacifico;
-      overflow: hidden;
-    }
-    #confettiCanvas {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-    }
-    canvas#gameCanvas {
-      background: #ffffff;
-      margin-top: 20px;
-      border-radius: 20px;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      z-index: 1;
-    }
-    h1 {
-      cursor: pointer;
-      user-select: none;
-      color: #000000;
-      text-shadow: 2px 2px 5px #aaa;
-      z-index: 2;
-    }
-    h2 {
-      margin: 5px;
-      color: #333;
-      text-shadow: 1px 1px 2px #ccc;
-      z-index: 2;
-    }
-  </style>
+<meta charset="UTF-8">
+<title>Birthday Countdown Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Pacifico&display=swap" rel="stylesheet">
+<style>
+  body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: 'Pacifico', cursive; }
+  canvas { background: #ffffff; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
+  h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
+  button {
+    margin-top: 20px;
+    padding: 12px 30px;
+    font-size: 24px;
+    font-family: 'Pacifico', cursive;
+    border: none;
+    border-radius: 15px;
+    cursor: pointer;
+    background: #ff6699;
+    color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transition: transform 0.2s ease;
+  }
+  button:hover {
+    transform: scale(1.1);
+    background: #ff3385;
+  }
+</style>
 </head>
 <body>
-  <h1 id="birthdayText">Happy Birthday Daddy</h1>
-  <h2 id="countdown"></h2>
-  <h3>until next Birthday🎉🎉</h3>
 
-  <!-- Confetti canvas behind everything -->
-  <canvas id="confettiCanvas"></canvas>
+<h1 id="birthdayText">Happy Birthday Daddy</h1>
+<h2 id="countdown"></h2>
+<h3>until next Birthday🎉🎉</h3>
+<canvas id="gameCanvas" width="1200" height="600"></canvas>
 
-  <!-- Your game canvas -->
-  <canvas id="gameCanvas" width="1200" height="600"></canvas>
+<!-- Celebration button -->
+<button id="partyBtn">🎊 Celebrate 🎊</button>
 
-  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
-  <script>
-    // Setup confetti
-    const confettiCanvas = document.getElementById("confettiCanvas");
-    const confetti = window.confetti.create(confettiCanvas, { resize: true, useWorker: true });
+<script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+<script>
+const btn = document.getElementById("partyBtn");
 
-    // Burst loop
-    function shootConfetti() {
-      confetti({
-        particleCount: 120,
-        spread: 90,
-        origin: { y: 0.6 }
-      });
-    }
-    setInterval(shootConfetti, 2000);
-    shootConfetti(); // initial blast
-  </script>
+// Fire confetti when button is clicked
+btn.addEventListener("click", () => {
+  // burst
+  confetti({
+    particleCount: 150,
+    spread: 70,
+    origin: { y: 0.6 }
+  });
+  // a second burst for effect
+  setTimeout(() => {
+    confetti({
+      particleCount: 100,
+      spread: 120,
+      origin: { y: 0.4 }
+    });
+  }, 300);
+});
+</script>
+<script>
 
-  <script>
     // ----- YOUR GAME CODE (unchanged, except fixed countdown bug) -----
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
@@ -246,6 +235,7 @@
   </script>
 </body>
 </html>
+
 
 
 
