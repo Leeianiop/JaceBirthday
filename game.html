@@ -37,7 +37,7 @@
       left: 0;
       width: 100%;
       height: 100%;
-      pointer-events: none; /* so it doesn’t block clicks */
+      pointer-events: none;
       z-index: 2;
     }
   </style>
@@ -46,8 +46,9 @@
   <h1 id="birthdayText">Happy Birthday Daddy</h1>
   <h2 id="countdown"></h2>
   <h3>until next Birthday 🎉🎉</h3>
-  <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
+  <canvas id="gameCanvas" width="1200" height="600"></canvas>
+  <canvas id="confettiCanvas"></canvas>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -93,8 +94,8 @@
     cakeFrames[1].src = 'cake eaten.png';
 
     let imagesToLoad = 6;
-    [playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]].forEach(img=>{
-      img.onload = ()=>{ imagesToLoad--; }
+    [playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]].forEach(img => {
+      img.onload = () => { imagesToLoad--; }
     });
 
     /* ====== Game objects ====== */
@@ -107,7 +108,6 @@
     let showImage = false;
     let specialImg = new Image();
     specialImg.src = "obese.png";
-
     document.addEventListener("keydown", (e) => {
       if (e.key.toLowerCase() === "a") {
         eatCount++;
@@ -133,47 +133,35 @@
     }
 
     /* ====== Confetti ====== */
-/* ====== Confetti ====== */
-let confetti = [];
-function spawnConfetti(x, y) {
-  for (let i = 0; i < 30; i++) {
-    confetti.push({
-      x: x,
-      y: y,
-      dx: (Math.random() - 0.5) * 6,
-      dy: (Math.random() - 0.5) * 6,
-      size: Math.random() * 6 + 4,
-      color: `hsl(${Math.random() * 360}, 100%, 50%)`,
-      life: 100
+    let confetti = [];
+    function spawnConfetti(x, y) {
+      for (let i = 0; i < 30; i++) {
+        confetti.push({
+          x: x,
+          y: y,
+          dx: (Math.random() - 0.5) * 6,
+          dy: (Math.random() - 0.5) * 6,
+          size: Math.random() * 6 + 4,
+          color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+          life: 100
+        });
+      }
+    }
+    function updateConfetti() {
+      confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+      confetti = confetti.filter(c => c.life > 0);
+      confetti.forEach(c => {
+        c.x += c.dx;
+        c.y += c.dy;
+        c.dy += 0.1; // gravity
+        c.life--;
+        confettiCtx.fillStyle = c.color;
+        confettiCtx.fillRect(c.x, c.y, c.size, c.size);
+      });
+    }
+    document.addEventListener("click", (e) => {
+      spawnConfetti(e.clientX, e.clientY);
     });
-  }
-}
-
-function updateConfetti(ctx) {
-  confetti = confetti.filter(c => c.life > 0);
-  confetti.forEach(c => {
-    c.x += c.dx;
-    c.y += c.dy;
-    c.dy += 0.1; // gravity
-    c.life--;
-    ctx.fillStyle = c.color;
-    ctx.fillRect(c.x, c.y, c.size, c.size);
-  });
-}
-
-document.addEventListener("click", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  if (
-    e.clientX < rect.left ||
-    e.clientX > rect.right ||
-    e.clientY < rect.top ||
-    e.clientY > rect.bottom
-  ) {
-    // translate mouse coords to canvas space
-    spawnConfetti(e.clientX - rect.left, e.clientY - rect.top);
-  }
-});
-
 
     /* ====== Game loop ====== */
     function gameLoop() {
@@ -194,10 +182,11 @@ document.addEventListener("click", (e) => {
       const seconds = Math.floor((diff / 1000) % 60);
       document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-      // Bar
+      // Progress Bar
       const barX=100, barY=100, barWidth=1000, barHeight=40, radius=20;
       ctx.fillStyle = "#ddd";
       roundRect(ctx, barX, barY, barWidth, barHeight, radius, true, false);
+
       let totalSeconds = (targetDate - now)/1000;
       let yearSeconds = (getNextCountdown().getTime() - new Date(now.getFullYear(), 7, 13).getTime()) / 1000;
       let progress = 1 - totalSeconds / yearSeconds;
@@ -209,14 +198,21 @@ document.addEventListener("click", (e) => {
         player.x -= playerSpeed;
         player.dir = "left";
         player.frameTick++;
-        if (player.frameTick > 10) { player.frame = (player.frame + 1) % 2; player.frameTick = 0; }
+        if (player.frameTick > 10) {
+          player.frame = (player.frame + 1) % 2;
+          player.frameTick = 0;
+        }
       } else if(keys['arrowright']) {
         player.x += playerSpeed;
         player.dir = "right";
         player.frameTick++;
-        if (player.frameTick > 10) { player.frame = (player.frame + 1) % 2; player.frameTick = 0; }
+        if (player.frameTick > 10) {
+          player.frame = (player.frame + 1) % 2;
+          player.frameTick = 0;
+        }
       } else {
-        player.frame = 0; player.frameTick = 0;
+        player.frame = 0;
+        player.frameTick = 0;
       }
 
       // Jump
@@ -227,7 +223,11 @@ document.addEventListener("click", (e) => {
       if(player.jumping){
         player.y += player.vy;
         player.vy += 1;
-        if(player.y >= 400) { player.y = 400; player.jumping = false; player.vy = 0; }
+        if(player.y >= 400) {
+          player.y = 400;
+          player.jumping = false;
+          player.vy = 0;
+        }
       }
 
       // Cake
@@ -235,10 +235,8 @@ document.addEventListener("click", (e) => {
       ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
       ctx.fillStyle = "black";
       ctx.font = "24px Arial";
-      let lines = ["Infinitely generative cake", "(Press A to eat)"];
-      for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
-      }
+      ctx.fillText("Infinitely generative cake", cake.x + 20, cake.y - 20);
+      ctx.fillText("(Press A to eat)", cake.x + 20, cake.y + 15);
 
       // Player
       let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
@@ -248,8 +246,12 @@ document.addEventListener("click", (e) => {
       if (showImage) ctx.drawImage(specialImg, 100, 100, 200, 200);
 
       // Confetti
-      updateConfetti(ctx);
+      updateConfetti();
 
+      // Auto confetti on birthday
+      if (now.getMonth() === 7 && now.getDate() === 13 && Math.random() < 0.2) {
+        spawnConfetti(Math.random()*confettiCanvas.width, 0);
+      }
 
       requestAnimationFrame(gameLoop);
     }
