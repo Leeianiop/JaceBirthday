@@ -47,7 +47,7 @@
   <h2 id="countdown"></h2>
   <h3>until next Birthday 🎉🎉</h3>
   <canvas id="gameCanvas" width="1200" height="600"></canvas>
-  <canvas id="confettiCanvas"></canvas>
+
 
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -135,34 +135,41 @@
     /* ====== Confetti ====== */
 /* ====== Confetti ====== */
 let confetti = [];
-function spawnConfetti(x,y){
-  for(let i=0;i<30;i++){
+function spawnConfetti(x, y) {
+  for (let i = 0; i < 30; i++) {
     confetti.push({
-      x:x, y:y,
-      dx:(Math.random()-0.5)*6,
-      dy:(Math.random()-0.5)*6,
-      size:Math.random()*6+4,
-      color:`hsl(${Math.random()*360},100%,50%)`,
-      life:100
+      x: x,
+      y: y,
+      dx: (Math.random() - 0.5) * 6,
+      dy: (Math.random() - 0.5) * 6,
+      size: Math.random() * 6 + 4,
+      color: `hsl(${Math.random() * 360}, 100%, 50%)`,
+      life: 100
     });
   }
 }
-function updateConfetti(ctx){
-  confetti = confetti.filter(c=>c.life>0);
-  confetti.forEach(c=>{
-    c.x+=c.dx;
-    c.y+=c.dy;
-    c.dy+=0.1;
+
+function updateConfetti(ctx) {
+  confetti = confetti.filter(c => c.life > 0);
+  confetti.forEach(c => {
+    c.x += c.dx;
+    c.y += c.dy;
+    c.dy += 0.1; // gravity
     c.life--;
-    ctx.fillStyle=c.color;
-    ctx.fillRect(c.x,c.y,c.size,c.size);
+    ctx.fillStyle = c.color;
+    ctx.fillRect(c.x, c.y, c.size, c.size);
   });
 }
 
-document.addEventListener("click",(e)=>{
+document.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
-  if(e.clientX<rect.left || e.clientX>rect.right || e.clientY<rect.top || e.clientY>rect.bottom){
-    // spawn from cursor position relative to canvas
+  if (
+    e.clientX < rect.left ||
+    e.clientX > rect.right ||
+    e.clientY < rect.top ||
+    e.clientY > rect.bottom
+  ) {
+    // translate mouse coords to canvas space
     spawnConfetti(e.clientX - rect.left, e.clientY - rect.top);
   }
 });
@@ -250,6 +257,7 @@ document.addEventListener("click",(e)=>{
   </script>
 </body>
 </html>
+
 
 
 
