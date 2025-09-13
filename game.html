@@ -1,41 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Birthday Countdown Game</title>
+<style>
+  body { background: #ffeedd; display: flex; flex-direction: column; align-items: center; font-family: sans-serif; }
+  canvas { background: #ffffff; margin-top: 20px; border-radius: 20px; box-shadow: 0 5px 15px rgba(0,0,0,0.3); }
+  h1 { cursor: pointer; user-select: none; color: #000000; text-shadow: 2px 2px 5px #aaa; }
+  h2 { margin: 5px; color: #333; text-shadow: 1px 1px 2px #ccc; }
+</style>
+</head>
+<body>
+
+<h1 id="birthdayText">Happy Birthday Daddy</h1>
+<h2 id="countdown"></h2>
+<h3>until next Birthday🎉🎉</h3>
+<canvas id="gameCanvas" width="1200" height="600"></canvas>
+
 <script>
-/* ========= Base setup ========= */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-/* Cycle text (kept as-is) */
-const texts = [
-  "Happy 46th Birthday Daddy",
-  "Happy 46th Birthday Jace",
-  "Happy 46th Birthday Lee",
-  "Hapi Bday Mah N-"
-];
+// --- Text click cycle ---
+const texts = ["Happy 46th Birthday Daddy","Happy 46th Birthday Jace","Happy 46th Birthday Lee"];
 let textIndex = 0;
 document.getElementById('birthdayText').addEventListener('click', () => {
-  textIndex = (textIndex + 1) % texts.length;
-  document.getElementById('birthdayText').innerText = texts[textIndex];
+    textIndex = (textIndex + 1) % texts.length;
+    document.getElementById('birthdayText').innerText = texts[textIndex];
 });
 
-/* ========= Countdown ========= */
-function getTargetDates() {
-  const now = new Date();
-  let eventDay = new Date(now.getFullYear(), 7, 18); // Aug 18 (0-based month)
-  let nextBirthday = new Date(now.getFullYear() + 1, 7, 18);
-  if (now < eventDay) return { phase: "event", target: eventDay, next: nextBirthday };
-  else return { phase: "birthday", target: nextBirthday, next: new Date(now.getFullYear() + 2, 7, 18) };
+// --- Countdown setup ---
+function getNextCountdown() {
+    const now = new Date();
+    let target = new Date(now.getFullYear(), 7, 13);
+    if (now > target) target.setFullYear(now.getFullYear() + 1);
+    return target;
 }
-let countdownState = getTargetDates();
+let targetDate = getNextCountdown();
 
-/* ========= Input ========= */
+// --- Key handling ---
 const keys = {};
 document.addEventListener('keydown', (e) => keys[e.key.toLowerCase()] = true);
 document.addEventListener('keyup', (e) => keys[e.key.toLowerCase()] = false);
 
-/* ========= Images ========= */
+// --- Sprite loader ---
 const playerRightFrames = [new Image(), new Image()];
 playerRightFrames[0].src = 'right 1.png';
 playerRightFrames[1].src = 'right 2.png';
-
 const playerLeftFrames = [new Image(), new Image()];
 playerLeftFrames[0].src = 'left 1.png';
 playerLeftFrames[1].src = 'left 2.png';
@@ -44,285 +55,154 @@ const cakeFrames = [new Image(), new Image()];
 cakeFrames[0].src = 'cake normal.png';
 cakeFrames[1].src = 'cake eaten.png';
 
-const buttonImage = new Image(); buttonImage.src = 'button.png';
-const npcImage    = new Image(); npcImage.src    = 'mom.png';   // mom.png is the NPC
-const planeImage  = new Image(); planeImage.src  = 'plane.png';
-const specialImage = new Image(); specialImage.src = 'special.png'; // your special image
+let imagesToLoad = 6;
+[playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]].forEach(img=>{
+    img.onload = ()=>{ imagesToLoad--; }
+});
 
-/* ========= Game state ========= */
+// --- Game objects ---
 let player = {
-  x: 400, y: 400, width: 200, height: 250,
-  dir: 'right', frame: 0, frameTick: 0, jumping: false, vy: 0
+    x: 400, y: 400,
+    width: 200, height: 250,
+    dir: "right", frame: 0,
+    jumping: false, jumpTime: 0,
+    frameTick: 0 
 };
-
-let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
+let cake = { x: 800, y: 300, width: 200, height: 250, frame: 0 };
 
 const playerSpeed = 10;
 
-let planeActive   = false;  
-let npcVisible    = false;  
-let npcSaidHi     = false;  
-let typedBuffer   = "";     
+// --- Eat tracking ---
+let eatCount = 0;
+let showImage = false;
 
-let buttonX = 20, buttonY = 100, buttonW = 80, buttonH = 80;
+// --- Special image ---
+let img = new Image();
+img.src = "obese.png";
 
-/* New special trigger */
-let aPressCount = 0;
-let specialActive = false;
-
-/* ========= Helpers ========= */
-function clamp(val, min, max) { return Math.max(min, Math.min(max, val)); }
-
-function drawRoundedRect(x, y, w, h, r, fillStyle) {
-  ctx.fillStyle = fillStyle;
-  ctx.beginPath();
-  ctx.moveTo(x + r, y);
-  ctx.lineTo(x + w - r, y);
-  ctx.quadraticCurveTo(x + w, y, x + w, y + r);
-  ctx.lineTo(x + w, y + h - r);
-  ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
-  ctx.lineTo(x + r, y + h);
-  ctx.quadraticCurveTo(x, y + h, x, y + h - r);
-  ctx.lineTo(x, y + r);
-  ctx.quadraticCurveTo(x, y, x + r, y);
-  ctx.closePath();
-  ctx.fill();
+// --- Rounded rectangle helper ---
+function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
+    ctx.beginPath();
+    ctx.moveTo(x+radius, y);
+    ctx.lineTo(x+width-radius, y);
+    ctx.quadraticCurveTo(x+width, y, x+width, y+radius);
+    ctx.lineTo(x+width, y+height-radius);
+    ctx.quadraticCurveTo(x+width, y+height, x+width-radius, y+height);
+    ctx.lineTo(x+radius, y+height);
+    ctx.quadraticCurveTo(x, y+height, x, y+height-radius);
+    ctx.lineTo(x, y+radius);
+    ctx.quadraticCurveTo(x, y, x+radius, y);
+    ctx.closePath();
+    if(fill) ctx.fill();
+    if(stroke) ctx.stroke();
 }
 
-function drawPlayer() {
-  const pf = player.dir === 'right' ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
-  if (pf.complete) {
-    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-  } else {
-    ctx.fillStyle = 'red';
-    ctx.fillRect(player.x, player.y, player.width, player.height);
-  }
-}
+// --- Cake eating logic ---
+document.addEventListener("keydown", (e) => {
+    if (e.key.toLowerCase() === "a") {
+        eatCount++;
+        console.log("Cake eaten:", eatCount);
 
-function drawCake() {
-  const cf = cakeFrames[cake.frame];
-  if (cf.complete) {
-    ctx.drawImage(cf, cake.x, cake.y, cake.width, cake.height);
-  } else {
-    ctx.fillStyle = 'pink';
-    ctx.fillRect(cake.x, cake.y, cake.width, cake.height);
-  }
-  ctx.fillStyle = 'black';
-  ctx.font = '24px Pacifico';
-  ctx.fillText('(Press A to eat)', cake.x + 20, cake.y + 15);
-}
-
-function drawPlane() {
-  if (planeImage.complete) ctx.drawImage(planeImage, 650, 340, 350, 180);
-  else { ctx.fillStyle = 'gray'; ctx.fillRect(650, 340, 350, 180); }
-}
-
-/* Special image */
-function drawSpecial() {
-  if (specialImage.complete) ctx.drawImage(specialImage, 400, 200, 400, 200);
-  else { ctx.fillStyle = 'purple'; ctx.fillRect(400, 200, 400, 200); }
-}
-
-/* NPC bubble that says "Hi" */
-function drawNPC() {
-  if (!npcVisible) return;
-  const nx = 320, ny = 340, nw = 160, nh = 220;
-  if (npcImage.complete) ctx.drawImage(npcImage, nx, ny, nw, nh);
-  else { ctx.fillStyle = 'orange'; ctx.fillRect(nx, ny, nw, nh); }
-  const bx = nx + nw + 20, by = ny + 40, bw = 140, bh = 60, r = 12;
-  ctx.fillStyle = 'white';
-  drawRoundedRect(bx, by, bw, bh, r, 'white');
-  ctx.strokeStyle = 'black';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(bx, by, bw, bh);
-  ctx.fillStyle = 'black';
-  ctx.font = '26px Pacifico';
-  ctx.fillText('Hi', bx + 15, by + 38);
-}
-
-function drawButton() {
-  ctx.save();
-  ctx.beginPath();
-  const r = 15;
-  ctx.moveTo(buttonX + r, buttonY);
-  ctx.lineTo(buttonX + buttonW - r, buttonY);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY, buttonX + buttonW, buttonY + r);
-  ctx.lineTo(buttonX + buttonW, buttonY + buttonH - r);
-  ctx.quadraticCurveTo(buttonX + buttonW, buttonY + buttonH, buttonX + buttonW - r, buttonY + buttonH);
-  ctx.lineTo(buttonX + r, buttonY + buttonH);
-  ctx.quadraticCurveTo(buttonX, buttonY + buttonH, buttonX, buttonY + buttonH - r);
-  ctx.lineTo(buttonX, buttonY + r);
-  ctx.quadraticCurveTo(buttonX, buttonY, buttonX + r, buttonY);
-  ctx.closePath();
-  ctx.clip();
-
-  const overdraw = 10;
-  if (buttonImage.complete) {
-    ctx.drawImage(buttonImage, buttonX - overdraw, buttonY - overdraw, buttonW + overdraw*2, buttonH + overdraw*2);
-  } else {
-    ctx.fillStyle = 'lightblue';
-    ctx.fillRect(buttonX, buttonY, buttonW, buttonH);
-  }
-  ctx.restore();
-
-  ctx.strokeStyle = 'black';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-}
-
-/* ========= Mouse: clicking the button ========= */
-canvas.addEventListener('click', (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  if (mx > buttonX && mx < buttonX + buttonW && my > buttonY && my < buttonY + buttonH) {
-    planeActive = true;
-    npcVisible  = true;
-    npcSaidHi   = true;
-  }
-});
-
-/* ========= Keyboard actions ========= */
-document.addEventListener('keydown', (e) => {
-  const k = e.key.toLowerCase();
-
-  if (!planeActive && k === 'a') {
-    cake.frame = 1;
-    setTimeout(() => { cake.frame = 0; }, 500);
-
-    aPressCount++;
-    if (aPressCount >= 15) {
-      specialActive = true;
+        if (eatCount >= 15) { 
+            showImage = true;
+        }
     }
-  }
-
-  if (k === 'arrowup' && !player.jumping) {
-    player.jumping = true;
-    player.vy = -15;
-  }
 });
 
-/* Typing "hi" back to NPC */
-document.addEventListener('keypress', (e) => {
-  if (!npcVisible) return;
-  const ch = e.key;
-  if (ch.length === 1) {
-    typedBuffer += ch;
-    if (typedBuffer.length > 10) typedBuffer = typedBuffer.slice(-10);
-    if (typedBuffer.toLowerCase().endsWith('hi')) {
-      npcVisible = false;
-      typedBuffer = '';
-    }
-  }
-});
-
-/* ========= Game loop ========= */
+// --- Game loop ---
 function gameLoop() {
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+    if(imagesToLoad > 0){ requestAnimationFrame(gameLoop); return; }
 
-  const now = new Date();
-  if (now >= countdownState.target) {
-    countdownState = { phase: "birthday", target: countdownState.next, next: new Date(countdownState.next.getFullYear() + 1, 7, 18) };
-  }
-  const diff = countdownState.target - now;
-  const days = Math.floor(diff / (1000*60*60*24));
-  const hours = Math.floor((diff / (1000*60*60)) % 24);
-  const minutes = Math.floor((diff / (1000*60)) % 60);
-  const seconds = Math.floor((diff / 1000) % 60);
-  document.getElementById('countdown').innerText =
-    `${days}d ${hours}h ${minutes}m ${seconds}s (${countdownState.phase})`;
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  const barX = 200, barY = 50, barW = 800, barH = 30, radius = 15;
-  drawRoundedRect(barX, barY, barW, barH, radius, 'black');
-  drawRoundedRect(barX + 2, barY + 2, barW - 4, barH - 4, radius - 2, 'white');
+    // Countdown
+    const now = new Date();
+    if(now >= targetDate) targetDate = getNextCountdown();
+    let diff = targetDate - now;
+    const days = Math.floor(diff / (1000*60*60*24));
+    const hours = Math.floor((diff / (1000*60*60)) % 24);
+    const minutes = Math.floor((diff / (1000*60)) % 60);
+    const seconds = Math.floor((diff / 1000) % 60);
+    document.getElementById('countdown').innerText = `${days}d ${hours}h ${minutes}m ${seconds}s`;
 
-  if (specialActive) {
-    drawSpecial();
-  } else if (planeActive) {
-    drawPlane();
-  } else {
-    drawCake();
-  }
+    // Countdown bar
+    const barX=100, barY=100, barWidth=1000, barHeight=40, radius=20;
+    ctx.fillStyle = "#ddd";
+    roundRect(ctx, barX, barY, barWidth, barHeight, radius, true, false);
 
-  if (keys['arrowleft']) {
-    player.x -= playerSpeed;
-    player.dir = 'left';
-    player.frameTick++;
-  } else if (keys['arrowright']) {
-    player.x += playerSpeed;
-    player.dir = 'right';
-    player.frameTick++;
-  } else {
-    player.frame = 0;
-    player.frameTick = 0;
-  }
-  if (player.frameTick > 10) {
-    player.frame = (player.frame + 1) % 2;
-    player.frameTick = 0;
-  }
+    let totalSeconds = (targetDate - now)/1000;
+    let startCountdown = getNextCountdown();
+    let progress = totalSeconds / ((targetDate - startCountdown)/1000);
+    ctx.fillStyle = "#76c7c0";
+    roundRect(ctx, barX, barY, barWidth*Math.max(0,progress), barHeight, radius, true, false);
 
-  if (player.jumping) {
-    player.y += player.vy;
-    player.vy += 1;
-    if (player.y >= 400) {
-      player.y = 400;
-      player.jumping = false;
-      player.vy = 0;
+    // Player movement
+    if(keys['arrowleft']) {
+        player.x -= playerSpeed;
+        player.dir = "left";
+        player.frameTick++;
+        if (player.frameTick > 10) {
+            player.frame = (player.frame + 1) % 2;
+            player.frameTick = 0;
+        }
+    } else if(keys['arrowright']) {
+        player.x += playerSpeed;
+        player.dir = "right";
+        player.frameTick++;
+        if (player.frameTick > 10) { 
+            player.frame = (player.frame + 1) % 2;
+            player.frameTick = 0;
+        }
+    } else {
+        player.frame = 0;
+        player.frameTick = 0;
     }
-  }
 
-  player.x = clamp(player.x, 0, canvas.width - player.width);
-  player.y = clamp(player.y, 0, canvas.height - player.height);
+    // Jump
+    if(keys['arrowup'] && !player.jumping) {
+        player.jumping = true;
+        player.vy = -15;
+    }
+    if(player.jumping){
+        player.y += player.vy;
+        player.vy += 1;
+        if(player.y >= 400) {
+            player.y = 400;
+            player.jumping = false;
+            player.vy = 0;
+        }
+    }
 
-  drawPlayer();
-  drawNPC();
-  drawButton();
+    // Cake interaction
+    cake.frame = keys['a'] ? 1 : 0;
 
-  requestAnimationFrame(gameLoop);
+    // Draw cake
+    ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
+
+    ctx.fillStyle = "black";
+    ctx.font = "24px Arial";
+    let lines = ["Infinitely generative cake", "(Press A to eat)"];
+    for (let i = 0; i < lines.length; i++) {
+        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
+    }
+
+    // Draw player
+    let pf = player.dir==="right"?playerRightFrames[player.frame]:playerLeftFrames[player.frame];
+    ctx.drawImage(pf, player.x, player.y, player.width, player.height);
+
+    // Show special image if enough cake eaten
+    if (showImage) {
+        ctx.drawImage(img, 100, 100, 200, 200); 
+    }
+
+    requestAnimationFrame(gameLoop);
 }
+
 gameLoop();
-
-/* ========= Confetti ========= */
-const confetti = document.getElementById('confetti');
-const cctx = confetti.getContext('2d');
-function sizeConfetti() {
-  confetti.width = window.innerWidth;
-  confetti.height = window.innerHeight;
-}
-sizeConfetti();
-window.addEventListener('resize', sizeConfetti);
-
-const pieces = Array.from({ length: 160 }).map(() => ({
-  x: Math.random() * confetti.width,
-  y: Math.random() * confetti.height,
-  s: Math.random() * 6 + 4,
-  v: Math.random() * 1.5 + 0.5,
-  c: `hsl(${Math.random() * 360}, 100%, 50%)`,
-  r: Math.random() * Math.PI
-}));
-
-function drawConfetti() {
-  cctx.clearRect(0, 0, confetti.width, confetti.height);
-  pieces.forEach(p => {
-    cctx.save();
-    cctx.translate(p.x, p.y);
-    cctx.rotate(p.r);
-    cctx.fillStyle = p.c;
-    cctx.fillRect(-p.s / 2, -p.s / 2, p.s, p.s);
-    cctx.restore();
-    p.y += p.v * 2;
-    p.r += 0.02;
-    if (p.y > confetti.height + 20) {
-      p.y = -20;
-      p.x = Math.random() * confetti.width;
-    }
-  });
-  requestAnimationFrame(drawConfetti);
-}
-drawConfetti();
 </script>
+
+</body>
+</html>
 
 
 
