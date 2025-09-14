@@ -9,37 +9,22 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-family: pacifico;
+      font-family: pacifico, sans-serif;
       position: relative;
       overflow: hidden;
       margin: 0;
     }
-    h1 {
-      cursor: pointer;
-      user-select: none;
-      color: #000000;
-      text-shadow: 2px 2px 5px #aaa;
-      margin: 10px;
+    h1, h2, h3 {
       position: relative;
       z-index: 3; /* always above canvases */
-    }
-    h2 {
       margin: 5px;
       color: #000000;
-      text-shadow: 1px 1px 2px #ccc;
-      position: relative;
-      z-index: 3;
+      text-shadow: 2px 2px 5px #aaa;
     }
-    h3 {
-      margin: 5px;
-      color: #000000;
-      position: relative;
-      z-index: 3;
-    }
+    h1 { cursor: pointer; user-select: none; margin-top: 10px; }
     canvas {
       border-radius: 20px;
       box-shadow: 0 5px 15px rgba(0,0,0,0.3);
-      z-index: 1;
     }
     #confettiCanvas {
       position: absolute;
@@ -48,7 +33,11 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 2; /* behind text but above game */
+      z-index: 1; /* ✅ behind game */
+    }
+    #gameCanvas {
+      position: relative;
+      z-index: 2; /* ✅ above confetti, below text */
     }
   </style>
 </head>
@@ -57,8 +46,8 @@
   <h2 id="countdown"></h2>
   <h3>until next Birthday 🎉🎉</h3>
 
-  <canvas id="gameCanvas" width="1200" height="600"></canvas>
   <canvas id="confettiCanvas"></canvas>
+  <canvas id="gameCanvas" width="1200" height="600"></canvas>
 
   <script>
     const canvas = document.getElementById('gameCanvas');
@@ -109,17 +98,17 @@
     let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
     const playerSpeed = 10;
 
-  /* ====== Cake eating ====== */
-let eatCount = 0;
-let showImage = false;
-let specialImg = new Image();
-specialImg.src = "obese.png";
-document.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "a" && !showImage) { // disable after image shows
-    eatCount++;
-    if (eatCount >= 15) showImage = true;
-  }
-});
+    /* ====== Cake eating ====== */
+    let eatCount = 0;
+    let showImage = false;
+    let specialImg = new Image();
+    specialImg.src = "obese.png";
+    document.addEventListener("keydown", (e) => {
+      if (e.key.toLowerCase() === "a" && !showImage) {
+        eatCount++;
+        if (eatCount >= 15) showImage = true;
+      }
+    });
 
     /* ====== Rounded rectangle helper ====== */
     function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -198,76 +187,61 @@ document.addEventListener("keydown", (e) => {
       ctx.fillStyle = "#76c7c0";
       roundRect(ctx, barX, barY, barWidth * Math.max(0, progress), barHeight, radius, true, false);
 
-      // Player movement
-      if (keys['arrowleft']) {
-        player.x -= playerSpeed;
-        player.dir = "left";
-        player.frameTick++;
-        if (player.frameTick > 10) {
-          player.frame = (player.frame + 1) % 2;
+      if (!showImage) {
+        // Player movement
+        if (keys['arrowleft']) {
+          player.x -= playerSpeed;
+          player.dir = "left";
+          player.frameTick++;
+          if (player.frameTick > 10) {
+            player.frame = (player.frame + 1) % 2;
+            player.frameTick = 0;
+          }
+        } else if (keys['arrowright']) {
+          player.x += playerSpeed;
+          player.dir = "right";
+          player.frameTick++;
+          if (player.frameTick > 10) {
+            player.frame = (player.frame + 1) % 2;
+            player.frameTick = 0;
+          }
+        } else {
+          player.frame = 0;
           player.frameTick = 0;
         }
-      } else if (keys['arrowright']) {
-        player.x += playerSpeed;
-        player.dir = "right";
-        player.frameTick++;
-        if (player.frameTick > 10) {
-          player.frame = (player.frame + 1) % 2;
-          player.frameTick = 0;
+
+        // Jump
+        if (keys['arrowup'] && !player.jumping) {
+          player.jumping = true;
+          player.vy = -15;
         }
+        if (player.jumping) {
+          player.y += player.vy;
+          player.vy += 1;
+          if (player.y >= 400) {
+            player.y = 400;
+            player.jumping = false;
+            player.vy = 0;
+          }
+        }
+
+        // Cake
+        cake.frame = keys['a'] ? 1 : 0;
+        ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
+        ctx.fillStyle = "black";
+        ctx.font = "24px Arial";
+        let lines = ["Infinitely generative cake", "(Press A to eat)"];
+        for (let i = 0; i < lines.length; i++) {
+          ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
+        }
+
+        // Player
+        let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+        ctx.drawImage(pf, player.x, player.y, player.width, player.height);
       } else {
-        player.frame = 0;
-        player.frameTick = 0;
+        // Special image covers whole canvas
+        ctx.drawImage(specialImg, 0, 0, canvas.width, canvas.height);
       }
-
-      // Jump
-      if (keys['arrowup'] && !player.jumping) {
-        player.jumping = true;
-        player.vy = -15;
-      }
-      if (player.jumping) {
-        player.y += player.vy;
-        player.vy += 1;
-        if (player.y >= 400) {
-          player.y = 400;
-          player.jumping = false;
-          player.vy = 0;
-        }
-      }
-
-      // Cake
-      cake.frame = keys['a'] ? 1 : 0;
-      ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
-      ctx.fillStyle = "black";
-      ctx.font = "24px Arial";
-      let lines = ["Infinitely generative cake", "(Press A to eat)"];
-      for (let i = 0; i < lines.length; i++) {
-        ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
-      }
-
-      // Player
-      let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
-      ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-
-      // Special image
-    // Special image (final screen)
-if (showImage) {
-  ctx.drawImage(specialImg, 0, 0, canvas.width, canvas.height);
-} else {
-  // Player
-  let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
-  ctx.drawImage(pf, player.x, player.y, player.width, player.height);
-
-  // Cake
-  cake.frame = keys['a'] ? 1 : 0;
-  ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
-  ctx.fillStyle = "black";
-  ctx.font = "24px Arial";
-  let lines = ["Infinitely generative cake", "(Press A to eat)"];
-  for (let i = 0; i < lines.length; i++) {
-    ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
-  }
-}
 
       // Confetti
       updateConfetti();
@@ -278,15 +252,4 @@ if (showImage) {
   </script>
 </body>
 </html>
-
-
-
-
-
-
-
-
-
-
-
 
