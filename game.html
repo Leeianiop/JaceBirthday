@@ -92,6 +92,20 @@
     let imagesToLoad = 6;
     [playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]]
       .forEach(img => { img.onload = () => { imagesToLoad--; } });
+// A → B → C sprite
+const abcFrames = [new Image(), new Image(), new Image()];
+abcFrames[0].src = "a.png"; 
+abcFrames[1].src = "b.png"; 
+abcFrames[2].src = "c.png"; 
+
+let abcSprite = {
+  x: 100,  // position on canvas
+  y: 300,
+  width: 200,
+  height: 200,
+  frame: 0
+};
+
 
     /* ====== Game objects ====== */
     let player = { x: 400, y: 400, width: 200, height: 250, dir: "right", frame: 0, frameTick: 0, jumping: false, vy: 0 };
@@ -108,6 +122,19 @@
         eatCount++;
         if (eatCount >= 15) showImage = true;
       }
+      canvas.addEventListener("click", (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  if (
+    mx >= abcSprite.x && mx <= abcSprite.x + abcSprite.width &&
+    my >= abcSprite.y && my <= abcSprite.y + abcSprite.height
+  ) {
+    abcSprite.frame = (abcSprite.frame + 1) % 3; // cycle A→B→C→A
+  }
+});
+
     });
 
     /* ====== Rounded rectangle helper ====== */
@@ -188,6 +215,9 @@
       roundRect(ctx, barX, barY, barWidth * Math.max(0, progress), barHeight, radius, true, false);
 
       if (!showImage) {
+        // Draw ABC sprite
+ctx.drawImage(abcFrames[abcSprite.frame], abcSprite.x, abcSprite.y, abcSprite.width, abcSprite.height);
+
         // Player movement
         if (keys['arrowleft']) {
           player.x -= playerSpeed;
@@ -258,6 +288,7 @@ ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
   </script>
 </body>
 </html>
+
 
 
 
