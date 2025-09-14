@@ -112,17 +112,21 @@ let abcSprite = {
     let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
     const playerSpeed = 10;
 
-    /* ====== Cake eating ====== */
-    let eatCount = 0;
-    let showImage = false;
-    let specialImg = new Image();
-    specialImg.src = "obese.png";
-    document.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "a" && !showImage) {
-        eatCount++;
-        if (eatCount >= 15) showImage = true;
-      }
-      canvas.addEventListener("click", (e) => {
+  /* ====== Cake eating ====== */
+let eatCount = 0;
+let showImage = false;
+let specialImg = new Image();
+specialImg.src = "obese.png";
+
+document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "a" && !showImage) {
+    eatCount++;
+    if (eatCount >= 15) showImage = true;
+  }
+});
+
+/* ====== ABC sprite click detection ====== */
+canvas.addEventListener("click", (e) => {
   const rect = canvas.getBoundingClientRect();
   const mx = e.clientX - rect.left;
   const my = e.clientY - rect.top;
@@ -134,8 +138,6 @@ let abcSprite = {
     abcSprite.frame = (abcSprite.frame + 1) % 3; // cycle A→B→C→A
   }
 });
-
-    });
 
     /* ====== Rounded rectangle helper ====== */
     function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -288,6 +290,7 @@ ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
   </script>
 </body>
 </html>
+
 
 
 
