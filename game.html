@@ -109,17 +109,17 @@
     let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
     const playerSpeed = 10;
 
-    /* ====== Cake eating ====== */
-    let eatCount = 0;
-    let showImage = false;
-    let specialImg = new Image();
-    specialImg.src = "obese.png";
-    document.addEventListener("keydown", (e) => {
-      if (e.key.toLowerCase() === "a") {
-        eatCount++;
-        if (eatCount >= 15) showImage = true;
-      }
-    });
+  /* ====== Cake eating ====== */
+let eatCount = 0;
+let showImage = false;
+let specialImg = new Image();
+specialImg.src = "obese.png";
+document.addEventListener("keydown", (e) => {
+  if (e.key.toLowerCase() === "a" && !showImage) { // disable after image shows
+    eatCount++;
+    if (eatCount >= 15) showImage = true;
+  }
+});
 
     /* ====== Rounded rectangle helper ====== */
     function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -250,7 +250,24 @@
       ctx.drawImage(pf, player.x, player.y, player.width, player.height);
 
       // Special image
-      if (showImage) ctx.drawImage(specialImg, 100, 100, 200, 200);
+    // Special image (final screen)
+if (showImage) {
+  ctx.drawImage(specialImg, 0, 0, canvas.width, canvas.height);
+} else {
+  // Player
+  let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
+  ctx.drawImage(pf, player.x, player.y, player.width, player.height);
+
+  // Cake
+  cake.frame = keys['a'] ? 1 : 0;
+  ctx.drawImage(cakeFrames[cake.frame], cake.x, cake.y, cake.width, cake.height);
+  ctx.fillStyle = "black";
+  ctx.font = "24px Arial";
+  let lines = ["Infinitely generative cake", "(Press A to eat)"];
+  for (let i = 0; i < lines.length; i++) {
+    ctx.fillText(lines[i], cake.x + 20, cake.y - 20 + i * 35);
+  }
+}
 
       // Confetti
       updateConfetti();
@@ -261,6 +278,7 @@
   </script>
 </body>
 </html>
+
 
 
 
