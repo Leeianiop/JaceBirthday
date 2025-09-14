@@ -9,14 +9,14 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-family: pacifico;
+      font-family: Pacifico, cursive;
       position: relative;
       overflow: hidden;
       margin: 0;
     }
     h1, h2, h3 {
       position: relative;
-      z-index: 3; /* always above canvases */
+      z-index: 3;
       margin: 5px;
       color: #000000;
       text-shadow: 2px 2px 5px #aaa;
@@ -33,11 +33,11 @@
       width: 100%;
       height: 100%;
       pointer-events: none;
-      z-index: 1; /* ✅ behind game */
+      z-index: 1;
     }
     #gameCanvas {
       position: relative;
-      z-index: 2; /* ✅ above confetti, below text */
+      z-index: 2;
     }
   </style>
 </head>
@@ -54,8 +54,13 @@
     const ctx = canvas.getContext('2d');
     const confettiCanvas = document.getElementById('confettiCanvas');
     const confettiCtx = confettiCanvas.getContext('2d');
-    confettiCanvas.width = window.innerWidth;
-    confettiCanvas.height = window.innerHeight;
+
+    function resizeConfettiCanvas() {
+      confettiCanvas.width = window.innerWidth;
+      confettiCanvas.height = window.innerHeight;
+    }
+    resizeConfettiCanvas();
+    window.addEventListener("resize", resizeConfettiCanvas);
 
     /* ====== Text cycling ====== */
     const texts = ["Happy 46th Birthday Daddy", "Happy 46th Birthday Jace", "Happy 46th Birthday Lee"];
@@ -92,52 +97,51 @@
     let imagesToLoad = 6;
     [playerRightFrames[0], playerRightFrames[1], playerLeftFrames[0], playerLeftFrames[1], cakeFrames[0], cakeFrames[1]]
       .forEach(img => { img.onload = () => { imagesToLoad--; } });
-// A → B → C sprite
-const abcFrames = [new Image(), new Image(), new Image()];
-abcFrames[0].src = "a.png"; 
-abcFrames[1].src = "b.png"; 
-abcFrames[2].src = "c.png"; 
 
-let abcSprite = {
-  x: 100,  // position on canvas
-  y: 300,
-  width: 250,
-  height: 200,
-  frame: 0
-};
+    // A → B → C sprite
+    const abcFrames = [new Image(), new Image(), new Image()];
+    abcFrames[0].src = "a.png"; 
+    abcFrames[1].src = "b.png"; 
+    abcFrames[2].src = "c.png"; 
 
+    let abcSprite = {
+      x: 100,
+      y: 300,
+      width: 250,
+      height: 200,
+      frame: 0
+    };
 
     /* ====== Game objects ====== */
     let player = { x: 400, y: 400, width: 200, height: 250, dir: "right", frame: 0, frameTick: 0, jumping: false, vy: 0 };
     let cake = { x: 800, y: 430, width: 200, height: 250, frame: 0 };
     const playerSpeed = 10;
 
-  /* ====== Cake eating ====== */
-let eatCount = 0;
-let showImage = false;
-let specialImg = new Image();
-specialImg.src = "obese.png";
+    /* ====== Cake eating ====== */
+    let eatCount = 0;
+    let showImage = false;
+    let specialImg = new Image();
+    specialImg.src = "obese.png";
 
-document.addEventListener("keydown", (e) => {
-  if (e.key.toLowerCase() === "a" && !showImage) {
-    eatCount++;
-    if (eatCount >= 15) showImage = true;
-  }
-});
+    document.addEventListener("keydown", (e) => {
+      if (e.key.toLowerCase() === "a" && !showImage) {
+        eatCount++;
+        if (eatCount >= 15) showImage = true;
+      }
+    });
 
-/* ====== ABC sprite click detection ====== */
-canvas.addEventListener("click", (e) => {
-  const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-
-  if (
-    mx >= abcSprite.x && mx <= abcSprite.x + abcSprite.width &&
-    my >= abcSprite.y && my <= abcSprite.y + abcSprite.height
-  ) {
-    abcSprite.frame = (abcSprite.frame + 1) % 3; // cycle A→B→C→A
-  }
-});
+    /* ====== ABC sprite click detection ====== */
+    canvas.addEventListener("click", (e) => {
+      const rect = canvas.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      if (
+        mx >= abcSprite.x && mx <= abcSprite.x + abcSprite.width &&
+        my >= abcSprite.y && my <= abcSprite.y + abcSprite.height
+      ) {
+        abcSprite.frame = (abcSprite.frame + 1) % 3;
+      }
+    });
 
     /* ====== Rounded rectangle helper ====== */
     function roundRect(ctx, x, y, width, height, radius, fill, stroke) {
@@ -156,32 +160,39 @@ canvas.addEventListener("click", (e) => {
       if (stroke) ctx.stroke();
     }
 
-    /* ====== Confetti ====== */
+    /* ====== Confetti (optimized) ====== */
     let confetti = [];
+    const MAX_CONFETTI = 400;
+
     function spawnConfetti(x, y) {
       for (let i = 0; i < 30; i++) {
         confetti.push({
-          x: x, y: y,
+          x, y,
           dx: (Math.random() - 0.5) * 6,
           dy: (Math.random() - 0.5) * 6,
           size: Math.random() * 6 + 4,
           color: `hsl(${Math.random() * 360}, 100%, 50%)`,
-          life: 100
+          life: 80
         });
       }
+      if (confetti.length > MAX_CONFETTI) {
+        confetti.splice(0, confetti.length - MAX_CONFETTI);
+      }
     }
+
     function updateConfetti() {
       confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
       confetti = confetti.filter(c => c.life > 0);
       confetti.forEach(c => {
         c.x += c.dx;
         c.y += c.dy;
-        c.dy += 0.1; // gravity
+        c.dy += 0.1;
         c.life--;
         confettiCtx.fillStyle = c.color;
         confettiCtx.fillRect(c.x, c.y, c.size, c.size);
       });
     }
+
     document.addEventListener("click", (e) => {
       const rect = canvas.getBoundingClientRect();
       spawnConfetti(e.clientX - rect.left, e.clientY - rect.top);
@@ -216,17 +227,16 @@ canvas.addEventListener("click", (e) => {
       ctx.fillStyle = "#76c7c0";
       roundRect(ctx, barX, barY, barWidth * Math.max(0, progress), barHeight, radius, true, false);
 
-    
- // Shadow + ABC sprite
-ctx.save();
-ctx.shadowColor = "rgba(0, 0, 0, 0.6)"; // shadow color
-ctx.shadowBlur = 25;                    // how soft it is
-ctx.shadowOffsetX = 10;                 // move shadow sideways
-ctx.shadowOffsetY = 10;                 // move shadow down
-ctx.drawImage(abcFrames[abcSprite.frame], abcSprite.x, abcSprite.y, abcSprite.width, abcSprite.height);
-ctx.restore();
+      // ABC sprite with shadow
+      ctx.save();
+      ctx.shadowColor = "rgba(0, 0, 0, 0.6)";
+      ctx.shadowBlur = 25;
+      ctx.shadowOffsetX = 10;
+      ctx.shadowOffsetY = 10;
+      ctx.drawImage(abcFrames[abcSprite.frame], abcSprite.x, abcSprite.y, abcSprite.width, abcSprite.height);
+      ctx.restore();
 
-
+      if (!showImage) {
         // Player movement
         if (keys['arrowleft']) {
           player.x -= playerSpeed;
@@ -278,14 +288,12 @@ ctx.restore();
         let pf = player.dir === "right" ? playerRightFrames[player.frame] : playerLeftFrames[player.frame];
         ctx.drawImage(pf, player.x, player.y, player.width, player.height);
       } else {
-        // Special image covers whole canvas
-let imgWidth = 1000;
-let imgHeight = 1000;
-let imgX = (canvas.width - imgWidth) / 2;  // center horizontally
-let imgY = ((canvas.height - imgHeight) / 2) + 70; // center vertically
-
-ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
-
+        // Special image
+        let imgWidth = 1000;
+        let imgHeight = 1000;
+        let imgX = (canvas.width - imgWidth) / 2;
+        let imgY = ((canvas.height - imgHeight) / 2) + 70;
+        ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
       }
 
       // Confetti
@@ -297,7 +305,6 @@ ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
   </script>
 </body>
 </html>
-
 
 
 
