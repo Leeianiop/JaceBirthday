@@ -9,7 +9,7 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      font-family: pacifico, sans-serif;
+      font-family: pacifico;
       position: relative;
       overflow: hidden;
       margin: 0;
@@ -240,7 +240,13 @@
         ctx.drawImage(pf, player.x, player.y, player.width, player.height);
       } else {
         // Special image covers whole canvas
-       ctx.drawImage(specialImg, 0, 100, canvas.width, canvas.height);
+let imgWidth = 400;
+let imgHeight = 400;
+let imgX = (canvas.width - imgWidth) / 2;  // center horizontally
+let imgY = (canvas.height - imgHeight) / 2; // center vertically
+
+ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
+
       }
 
       // Confetti
@@ -252,5 +258,6 @@
   </script>
 </body>
 </html>
+
 
 
