@@ -217,18 +217,14 @@ canvas.addEventListener("click", (e) => {
       roundRect(ctx, barX, barY, barWidth * Math.max(0, progress), barHeight, radius, true, false);
 
     
-        if (!showImage) {
-  // Shadow for ABC sprite
-  ctx.save(); // save current state
-  ctx.shadowColor = "rgba(0,0,0,0.5)";
-  ctx.shadowBlur = 20;
-  ctx.shadowOffsetX = 10;
-  ctx.shadowOffsetY = 10;
-
-  // Draw ABC sprite
-  ctx.drawImage(abcFrames[abcSprite.frame], abcSprite.x, abcSprite.y, abcSprite.width, abcSprite.height);
-
-  ctx.restore(); // restore state so other drawings aren’t affected
+ // Shadow + ABC sprite
+ctx.save();
+ctx.shadowColor = "rgba(0, 0, 0, 0.6)"; // shadow color
+ctx.shadowBlur = 25;                    // how soft it is
+ctx.shadowOffsetX = 10;                 // move shadow sideways
+ctx.shadowOffsetY = 10;                 // move shadow down
+ctx.drawImage(abcFrames[abcSprite.frame], abcSprite.x, abcSprite.y, abcSprite.width, abcSprite.height);
+ctx.restore();
 
 
         // Player movement
@@ -301,6 +297,7 @@ ctx.drawImage(specialImg, imgX, imgY, imgWidth, imgHeight);
   </script>
 </body>
 </html>
+
 
 
 
